@@ -87,6 +87,20 @@ services:
       nats: { condition: service_started }
       catalog: { condition: service_healthy }
 
+  layout:
+    <<: *service
+    build: { <<: *service-build, args: { SERVICE: layout } }
+    environment:
+      <<: *service-env
+      PORT: 4106
+      PROJECTS_URL: http://projects:4102
+      MEDIA_URL: http://media:4104
+    depends_on:
+      nats: { condition: service_started }
+      catalog: { condition: service_healthy }
+      projects: { condition: service_healthy }
+      media: { condition: service_healthy }
+
   gateway:
     <<: *service
     build: { <<: *service-build, args: { SERVICE: gateway } }
