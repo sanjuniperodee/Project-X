@@ -4,7 +4,7 @@ import type { Draft } from '@px/contracts';
 export function DraftPreview({ draft, cardsTitle }: { draft: Draft; cardsTitle: string }) {
   return (
     <section aria-labelledby="draft-title" className="rounded-card border-2 border-ink bg-surface p-6 sm:p-10">
-      <p className="text-sm text-muted">Черновик текстов, по нему дизайнер собирает макет</p>
+      <p className="text-sm text-muted">Черновик текстов, по нему верстаем макет</p>
       <h2 id="draft-title" className="mt-3 font-display text-4xl leading-tight font-semibold sm:text-5xl">
         {draft.title}
       </h2>

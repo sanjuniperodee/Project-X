@@ -64,7 +64,7 @@ export function InvitePanel({
           </div>
         </>
       ) : (
-        <p className="mt-3 text-[15px]">Приём историй закрыт: материалы уже у дизайнера.</p>
+        <p className="mt-3 text-[15px]">Приём историй закрыт: материалы уже в вёрстке.</p>
       )}
       <p className="mt-4 text-sm text-muted">{count === 0 ? 'Пока никто не ответил.' : `Уже ${plural(count, ['ответ', 'ответа', 'ответов'])}.`}</p>
     </section>
