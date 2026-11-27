@@ -101,7 +101,7 @@ function buildMagazine(input: TemplateInput, metrics: FontMetrics, target: numbe
   c.fit(cover, issue, { font: 'inter-600', size: 8.5, leading: 1.2, color: PAPER, align: 'center', tracking: 2, uppercase: true }, { x: MARGIN, y: mm(52), w: CONTENT.w, h: mm(6) }, { minSize: 6, maxLines: 1 });
 
   let lineY = A4.h - mm(112);
-  const coverLines = input.draft.cards.slice(0, 4);
+  const coverLines = coverLinesFor(input, c).slice(0, 4);
   coverLines.forEach((card, i) => {
     const box = { x: MARGIN, y: lineY, w: mm(78), h: mm(22) };
     if (i === 0) {
@@ -123,9 +123,12 @@ function buildMagazine(input: TemplateInput, metrics: FontMetrics, target: numbe
   folio(c, letter, 2, s);
 
   // ---- 3. Articles ----
-  const sections = editorialSections(input, ['hero', 'photos']).filter(
+  // The template generator dumps list answers as "Label N:" lines: rules are set from the answers instead.
+  const rawRules = input.draft.generator === 'template' ? m.list('rules', 'rules').map((r) => asText(r.text)).filter(Boolean) : [];
+  const sections = editorialSections(input, input.draft.generator === 'template' ? ['hero', 'photos', 'rules'] : ['hero', 'photos']).filter(
     (section) => !(FRIENDS.test(section.heading) && input.source.contributions.length > 0),
   );
+  if (rawRules.length > 0) sections.push({ heading: m.stepTitle('rules') ?? 'Правила жизни', body: rawRules.join('\n') });
   const contents: Array<{ title: string; page: number }> = [];
   const openerPhotos = gallery.filter((p) => p !== coverPhoto);
   sections.forEach((section, index) => {
@@ -192,6 +195,31 @@ function buildMagazine(input: TemplateInput, metrics: FontMetrics, target: numbe
   }
 
   return { composer: c, contentPages };
+}
+
+/**
+ * Cover lines. Claude writes them as draft cards; the template generator's cards are raw contributions,
+ * so for it the lines announce what is inside the issue.
+ */
+function coverLinesFor(input: TemplateInput, c: Composer): Array<{ title: string; text: string }> {
+  if (input.draft.generator !== 'template') return input.draft.cards;
+  const m = c.materials;
+  const rules = m.list('rules', 'rules').length;
+  const friends = input.source.contributions.length;
+  return [
+    { title: 'Большое интервью', text: m.text('interview', 'threeWords') },
+    ...(rules > 0 ? [{ title: 'Правила жизни', text: `${rules} ${plural(rules, ['правило', 'правила', 'правил'])}, по которым она живёт` }] : []),
+    ...(friends > 0 ? [{ title: 'Друзья рассказали всё', text: `${friends} ${plural(friends, ['история', 'истории', 'историй'])} из первых уст` }] : []),
+    ...(m.text('interview', 'dream') ? [{ title: 'О чём мечтает', text: m.text('interview', 'dream') }] : []),
+  ];
+}
+
+function plural(n: number, forms: [string, string, string]): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+  return forms[2];
 }
 
 function folio(c: Composer, page: Page, number: number, s: ReturnType<typeof styles>) {
@@ -334,7 +362,7 @@ function backCover(c: Composer, s: ReturnType<typeof styles>, photo: PhotoRef | 
     const d = mm(70);
     c.image(page, photo, { x: (A4.w - d) / 2, y: mm(70), w: d, h: d }, { shape: 'circle' });
   }
-  const closing = c.input.draft.cards.at(-1);
+  const closing = c.input.draft.generator === 'template' ? undefined : c.input.draft.cards.at(-1);
   c.fit(page, closing?.title ?? 'Продолжение следует', { ...s.quote, align: 'center' }, { x: MARGIN + mm(10), y: mm(152), w: CONTENT.w - mm(20), h: mm(40) }, { minSize: 14, maxLines: 3 });
   c.fit(page, 'COVER ME', { font: 'playfair-700', size: 26, leading: 1, color: INK, align: 'center', tracking: 2 }, { x: MARGIN, y: A4.h - mm(42), w: CONTENT.w, h: mm(12) }, { minSize: 14, maxLines: 1 });
   c.fit(page, 'Сделано с любовью · coverme.kz', { ...s.folio, align: 'center' }, { x: MARGIN, y: A4.h - mm(28), w: CONTENT.w, h: mm(4) }, { minSize: 5, maxLines: 1 });

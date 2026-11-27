@@ -135,7 +135,7 @@ export class ProjectService {
       if (locked.status === 'draft') {
         throw AppError.conflict('Сначала внесите предоплату — после неё проект уходит дизайнеру');
       }
-      const change = transition(locked, 'in_design', 'Материалы отправлены дизайнеру');
+      const change = transition(locked, 'in_design', 'Материалы отправлены на вёрстку');
       await tx.update(locked);
       await this.recordChange(tx, locked, change);
 

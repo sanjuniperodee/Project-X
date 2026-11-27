@@ -87,7 +87,7 @@ export function manualTransition(project: Project, to: ProjectStatus, note: stri
 
 export function assertEditable(project: Project): void {
   if (!isEditable(project.status)) {
-    throw new ProjectRuleViolation('not_editable', 'Материалы уже у дизайнера — изменения можно передать через студию');
+    throw new ProjectRuleViolation('not_editable', 'Материалы уже в вёрстке — правки можно описать, когда будет готов макет');
   }
 }
 
