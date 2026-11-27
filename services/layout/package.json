@@ -1,0 +1,38 @@
+{
+  "name": "@px/layout-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Layout: turns the AI draft and collected materials into a print-ready PDF and page previews",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bench": "tsx scripts/bench.ts",
+    "sample": "tsx scripts/sample.ts"
+  },
+  "dependencies": {
+    "@px/contracts": "file:../../shared/contracts",
+    "@px/service-kit": "file:../../shared/service-kit",
+    "fontkit": "^3.0.0",
+    "jpeg-js": "^0.4.4",
+    "pdfkit": "^0.21.0",
+    "png-js": "^3.0.0"
+  },
+  "devDependencies": {
+    "@expo-google-fonts/cormorant-garamond": "^0.4.1",
+    "@expo-google-fonts/inter-tight": "^0.4.2",
+    "@expo-google-fonts/literata": "^0.4.3",
+    "@expo-google-fonts/playfair-display": "^0.4.2",
+    "@expo-google-fonts/rubik": "^0.4.2",
+    "@expo-google-fonts/unbounded": "^0.4.1",
+    "@types/node": "^26.6.11",
+    "@types/pdfkit": "^0.17.7",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2"
+  }
+}
