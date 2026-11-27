@@ -1,8 +1,8 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { formatTenge, type ProductId, type ProductSummary } from '@px/contracts';
 import { getBrand } from '@/brands';
-import { CoverPortrait } from '@/brands/glossy/live-cover';
 import { GrowingTree } from '@/brands/shezhire/growing-tree';
 import { SITE } from '@/shared/config/site';
 import { Container } from '@/shared/ui/container';
@@ -66,16 +66,16 @@ export function HubPage({ products }: { products: ProductSummary[] }) {
 }
 
 function CoverArt() {
+  // The real cover of the sample issue, typeset by the layout service.
   return (
-    <div aria-hidden className="relative aspect-[3/4] w-44 bg-glossy-fuchsia p-3 text-white shadow-[12px_12px_0_#000] [container-type:inline-size]">
-      <p className="relative font-[family-name:var(--font-playfair)] text-[16.5cqw] leading-[0.85] font-black tracking-[-0.04em] whitespace-nowrap">
-        COVER ME
-      </p>
-      <p className="absolute bottom-3 left-3 z-10 font-[family-name:var(--font-playfair)] text-[16cqw] leading-none font-black italic">
-        Айгерим
-      </p>
-      <CoverPortrait />
-    </div>
+    <Image
+      src="/coverme/issue/01.webp"
+      alt=""
+      width={176}
+      height={249}
+      sizes="176px"
+      className="aspect-[210/297] w-44 shadow-[12px_12px_0_#000]"
+    />
   );
 }
 

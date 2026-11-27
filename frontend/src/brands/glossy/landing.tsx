@@ -1,66 +1,124 @@
+import Image from 'next/image';
 import { formatTenge } from '@px/contracts';
 import { Faq } from '../_shared/faq';
 import type { LandingProps } from '../types';
 import { ButtonLink } from '@/shared/ui/button';
 import { Container } from '@/shared/ui/container';
 import { cn } from '@/shared/lib/cn';
+import { IssueReader } from './issue-reader';
 import { LiveCover } from './live-cover';
+import { SAMPLE_PAGE_SIZE, samplePage } from './sample-issue';
 
-const CONTENTS = [
-  { page: '02', title: 'Письмо редактора', text: 'Пара слов от вас — почему этот номер вообще случился.' },
-  { page: '04', title: 'Большое интервью', text: 'Детство, первые победы, любимые словечки. Редактор соберёт из ваших ответов живой текст.' },
-  { page: '12', title: 'Правила жизни', text: 'Фирменная рубрика: десять коротких правил, по которым живёт герой.' },
-  { page: '16', title: 'Фотосессия', text: 'Развороты из ваших фото: детские, свадебные, самые неудачные.' },
-  { page: '24', title: 'Инсайды от друзей', text: 'Истории и пожелания, которые друзья пишут по вашей ссылке.' },
-  { page: '32', title: 'Хронология', text: 'Год за годом: переезды, дипломы, свадьбы и прочие главные события.' },
-];
+const CTA = 'Собрать журнал';
+
+/** How questionnaire answers turn into pages: each rubric with the page it produced in the sample issue. */
+const RUBRICS = [
+  {
+    page: 4,
+    title: 'Досье',
+    answer: 'Дата рождения, город и чем занимается',
+    result: 'Страница-анкета с портретом и знаком зодиака',
+  },
+  {
+    page: 5,
+    title: 'Большое интервью',
+    answer: 'Самая яркая история, детство, мечта',
+    result: 'Разворот с фото и очерком на две колонки',
+  },
+  {
+    page: 7,
+    title: 'Вкусы героя',
+    answer: 'Любимая еда, музыка, место и коронная фраза',
+    result: 'Рубрика в духе модных журналов',
+  },
+  {
+    page: 8,
+    title: 'Хронология',
+    answer: 'Главные годы и фото того времени',
+    result: 'Жизнь в датах — от рождения до сегодня',
+  },
+  {
+    page: 9,
+    title: 'В цифрах',
+    answer: '«17 стран», «0 опозданий на плов»',
+    result: 'Инфографика на чёрном развороте',
+  },
+  {
+    page: 11,
+    title: 'Правила жизни',
+    answer: 'Принципы, по которым живёт герой',
+    result: 'Нумерованный список и большой портрет',
+  },
+  {
+    page: 12,
+    title: 'Говорят друзья',
+    answer: 'Друзья пишут истории по вашей ссылке',
+    result: 'У каждого своя страница с фото и пожеланием',
+  },
+  {
+    page: 16,
+    title: 'Одним словом',
+    answer: 'Каждый друг описывает героя одним словом',
+    result: 'Плакат из слов на розовой странице',
+  },
+] as const;
 
 const STEPS = [
-  { title: 'Ответьте на вопросы', text: 'Анкета на 15 минут: про героя, правила жизни и фото. Можно заполнять частями.' },
-  { title: 'Позовите друзей', text: 'Отправьте ссылку в общий чат. Друзья пишут истории, а герой ничего не знает.' },
-  { title: 'Мы верстаем номер', text: 'Редактор дописывает тексты, дизайнер собирает обложку и развороты.' },
-  { title: 'Согласуйте и получите', text: 'Покажем макет, внесём правки и напечатаем.' },
+  { title: 'Заполните анкету', time: '20 минут', text: 'Про героя, его правила, вкусы и главные годы. Можно частями: всё сохраняется.' },
+  { title: 'Позовите друзей', time: '2–3 дня', text: 'Киньте ссылку в общий чат. Друзья пишут истории и шлют фото, герой ничего не знает.' },
+  { title: 'Получите макет', time: 'на следующий день', text: 'Редакция пишет тексты и верстает номер. Вы листаете его прямо на сайте и просите правки.' },
+  { title: 'Держите в руках', time: 'от 7 дней', text: 'После согласования печатаем на плотной мелованной бумаге и привозим.' },
 ];
 
 export function GlossyLanding({ product, href }: LandingProps) {
   const guestCopy = product.extras.find((e) => e.id === 'guest-copy');
   const priceFrom = Math.min(...product.formats.map((f) => f.price));
+  const large = product.formats.find((f) => f.recommended) ?? product.formats.at(-1)!;
 
   const faq = [
     {
       q: 'Сколько ждать журнал?',
-      a: `После того как вы согласуете макет, печать и доставка занимают ${product.productionDays} дней. Если праздник скоро, добавьте срочное производство.`,
+      a: `Макет готов на следующий день после того, как вы отправите материалы. После согласования печать и доставка занимают ${product.productionDays} дней. Если праздник скоро, добавьте срочное производство.`,
     },
     {
-      q: 'А если фотографий мало или они плохого качества?',
-      a: 'Хватит 15–20 снимков с телефона. Для обложки подберём лучший кадр и обработаем его. Если кадр совсем не подходит, предложим простую фотосъёмку.',
+      q: 'Сколько нужно фотографий?',
+      a: 'Для номера на 24 страницы хватит 20 снимков с телефона, для 36 страниц лучше от 40. Для обложки нужен один вертикальный портрет, где хорошо видно лицо. Чем больше кадров, тем богаче фотосессия.',
+    },
+    {
+      q: 'Можно сделать журнал про пару или компанию?',
+      a: 'Да. Героем номера может быть пара на годовщину свадьбы, семья, команда или компания к юбилею. Анкета та же, просто отвечайте про всех.',
     },
     {
       q: 'Друзья увидят, что написали другие?',
-      a: 'Нет. Каждый видит только свою форму. Все истории собираются у вас и у редактора.',
+      a: 'Нет. Каждый видит только свою форму. Все истории собираются у вас и в редакции, а герой узнаёт обо всём, когда откроет журнал.',
+    },
+    {
+      q: 'Что если мне не понравится макет?',
+      a: 'Напишите, что поменять, прямо под макетом. Мы пересоберём номер и покажем новую версию. Остаток вы платите только за макет, который одобрили.',
     },
     {
       q: 'Что входит в предоплату?',
-      a: `Предоплата ${formatTenge(product.deposit)} закрепляет за вами редактора и дизайнера. Остальное вы платите, когда увидите и одобрите готовый макет.`,
+      a: `Предоплата ${formatTenge(product.deposit)} запускает работу редакции над номером. Остальное вы платите, когда увидите и одобрите готовый макет.`,
     },
   ];
 
   return (
     <>
+      {/* Hero */}
       <section className="border-b-2 border-black">
-        <Container wide className="grid items-center gap-12 py-10 lg:grid-cols-12 lg:gap-10 lg:py-14">
+        <Container wide className="grid items-center gap-12 py-10 lg:grid-cols-12 lg:gap-10 lg:py-16">
           <div className="flex flex-col gap-10 lg:col-span-7 lg:gap-14">
             <h1 className="font-display text-[clamp(3.25rem,8.4vw,8.5rem)] leading-[0.9] font-black tracking-[-0.035em]">
               Журнал, где на обложке ваш человек
             </h1>
             <div className="grid gap-8 sm:grid-cols-2 sm:items-end">
               <p className="max-w-[42ch] text-lg leading-relaxed">
-                Настоящий глянец об одном человеке, паре или компании: интервью, правила жизни, фотосессия и истории
-                от друзей.
+                Настоящий глянец на {product.formats.map((f) => f.name.match(/\d+/)?.[0]).filter(Boolean).join(' или ')}{' '}
+                страниц об одном человеке: досье, интервью, правила жизни, хронология, фотосессия и истории от друзей.
               </p>
               <div className="flex flex-col items-start gap-3">
                 <ButtonLink href={href('/create')} size="lg" className="bg-black! text-white! hover:bg-glossy-fuchsia!">
-                  {brandCta}
+                  {CTA}
                 </ButtonLink>
                 <p className="text-sm text-muted">
                   от {formatTenge(priceFrom)}, сначала только предоплата {formatTenge(product.deposit)}
@@ -68,64 +126,111 @@ export function GlossyLanding({ product, href }: LandingProps) {
               </div>
             </div>
           </div>
-          <div className="mx-auto w-full max-w-[420px] lg:col-span-5 lg:mr-0">
+          <div className="mx-auto w-full max-w-[440px] lg:col-span-5 lg:mr-0">
             <LiveCover />
           </div>
         </Container>
       </section>
 
-      <section id="contents" className="border-b-2 border-black">
-        <Container wide className="grid gap-10 py-16 lg:grid-cols-12 lg:py-24">
-          <div className="lg:col-span-4">
-            <h2 className="font-display text-5xl leading-none font-black tracking-tight lg:text-6xl">В номере</h2>
-            <p className="mt-5 max-w-[34ch] leading-relaxed text-muted">
-              Так выглядит содержание журнала на 36 страниц. Рубрики можно менять под героя.
+      {/* Sample issue */}
+      <section id="issue" className="overflow-hidden border-b-2 border-black bg-glossy-smoke">
+        <Container wide className="flex flex-wrap items-end justify-between gap-6 pt-16 pb-10 lg:pt-24">
+          <h2 className="font-display text-5xl leading-none font-black tracking-tight lg:text-7xl">Листайте номер</h2>
+          <p className="max-w-[46ch] leading-relaxed text-muted">
+            Это настоящие страницы номера на 24 страницы. Его собрали из одной анкеты и четырёх историй друзей. Ваш номер
+            будет про вашего человека.
+          </p>
+        </Container>
+        <div className="pb-16 lg:pb-24">
+          <IssueReader />
+        </div>
+      </section>
+
+      {/* Answers → pages */}
+      <section id="rubrics" className="border-b-2 border-black">
+        <Container wide className="py-16 lg:py-24">
+          <div className="grid gap-6 lg:grid-cols-12">
+            <h2 className="font-display text-5xl leading-[0.95] font-black tracking-tight lg:col-span-6 lg:text-6xl">
+              Вы отвечаете на вопросы. Мы делаем из ответов журнал
+            </h2>
+            <p className="max-w-[46ch] self-end leading-relaxed text-muted lg:col-span-5 lg:col-start-8">
+              Каждый ответ в анкете становится рубрикой. Нет ответа — нет пустой страницы: номер собирается из того, что
+              вы рассказали.
             </p>
           </div>
-          <ol className="grid gap-x-10 sm:grid-cols-2 lg:col-span-8">
-            {CONTENTS.map((item) => (
-              <li key={item.page} className="flex gap-5 border-t border-black py-6">
-                <span className="w-14 shrink-0 font-display text-4xl leading-none font-black italic text-glossy-fuchsia">
-                  {item.page}
-                </span>
-                <div>
-                  <h3 className="text-lg font-semibold">{item.title}</h3>
-                  <p className="mt-1.5 leading-relaxed text-muted">{item.text}</p>
-                </div>
-              </li>
-            ))}
+          <ol className="mt-14 grid gap-x-12 sm:grid-cols-2">
+            {RUBRICS.map((rubric) => {
+              const page = samplePage(rubric.page);
+              return (
+                <li key={rubric.title} className="flex gap-5 border-t-2 border-black py-6 sm:gap-6">
+                  <Image
+                    src={page.src}
+                    alt={`Страница «${rubric.title}» из примера номера`}
+                    width={SAMPLE_PAGE_SIZE.width}
+                    height={SAMPLE_PAGE_SIZE.height}
+                    sizes="112px"
+                    className="h-auto w-24 shrink-0 self-start shadow-[0_10px_24px_-14px_rgba(0,0,0,0.6)] sm:w-28"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="font-display text-2xl leading-tight font-black">{rubric.title}</h3>
+                    <p className="mt-3 text-sm">
+                      <span className="font-semibold text-glossy-fuchsia">Вы пишете:</span> {rubric.answer}
+                    </p>
+                    <p className="mt-1 text-sm text-muted">
+                      <span className="font-semibold text-black">В журнале:</span> {rubric.result}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         </Container>
       </section>
 
+      {/* Friends */}
       <section className="bg-black text-white">
-        <Container wide className="grid gap-12 py-16 lg:grid-cols-2 lg:py-24">
-          <div>
+        <Container wide className="grid items-center gap-14 py-16 lg:grid-cols-12 lg:py-24">
+          <div className="lg:col-span-5">
             <h2 className="font-display text-5xl leading-[0.95] font-black tracking-tight lg:text-7xl">
               Самое интересное напишут друзья
             </h2>
-            <p className="mt-6 max-w-[48ch] text-lg leading-relaxed text-white/75">
-              Вы получаете секретную ссылку для общего чата. Каждый друг пишет историю, пожелание и добавляет общие фото.
-              В журнал это попадает отдельной рубрикой.
+            <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-white/75">
+              Вы получаете секретную ссылку для общего чата. Каждый пишет историю, пожелание и одно слово о герое, добавляет
+              общие фото. В номере у каждого своя страница.
             </p>
           </div>
-          <div className="self-center border border-white/30 p-6 sm:p-8">
-            <p className="text-sm text-white/60">Сообщение в чат «Др Айгерим 🎉»</p>
-            <p className="mt-4 text-xl leading-relaxed">
-              Девочки, делаем Айгерим журнал про неё. Напишите самую смешную историю с ней, это 5 минут. Ей ни слова!
-            </p>
-            <p className="mt-4 break-all text-glossy-fuchsia underline underline-offset-4">coverme.kz/invite/k3J9xQ</p>
+          <div className="relative grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center lg:col-span-6 lg:col-start-7">
+            <div className="max-w-sm bg-[#1f2c34] p-5 text-[15px] leading-relaxed sm:p-6">
+              <p className="text-xs text-white/50">Чат «Др Айгерим 🎉» · 4 участника</p>
+              <p className="mt-3 rounded-lg rounded-tl-none bg-[#005c4b] p-3">
+                Девочки, делаем Айгерим журнал про неё 🤫 Напишите самую смешную историю с ней, это 5 минут. Ей ни слова!
+                <span className="mt-2 block break-all text-[#53bdeb] underline underline-offset-2">coverme.kz/invite/k3J9xQ</span>
+              </p>
+              <p className="mt-3 w-fit rounded-lg rounded-tl-none bg-[#202c33] p-3 ring-1 ring-white/10">Уже написала! 😂</p>
+            </div>
+            <Image
+              src={samplePage(12).src}
+              alt="Страница друга из примера номера"
+              width={SAMPLE_PAGE_SIZE.width}
+              height={SAMPLE_PAGE_SIZE.height}
+              sizes="220px"
+              className="h-auto w-48 rotate-3 justify-self-center shadow-[0_30px_50px_-20px_rgba(228,0,124,0.55)] sm:w-56"
+            />
           </div>
         </Container>
       </section>
 
+      {/* How it works */}
       <section id="how" className="border-b-2 border-black">
         <Container wide className="py-16 lg:py-24">
           <h2 className="font-display text-5xl leading-none font-black tracking-tight lg:text-6xl">Как это работает</h2>
           <ol className="mt-12 grid gap-px bg-black sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step, i) => (
               <li key={step.title} className="bg-white p-6 pb-10 sm:p-8">
-                <span className="font-display text-6xl leading-none font-black italic">{i + 1}</span>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-display text-6xl leading-none font-black italic">{i + 1}</span>
+                  <span className="text-sm font-semibold text-glossy-fuchsia">{step.time}</span>
+                </div>
                 <h3 className="mt-6 text-xl font-semibold">{step.title}</h3>
                 <p className="mt-2 leading-relaxed text-muted">{step.text}</p>
               </li>
@@ -134,22 +239,52 @@ export function GlossyLanding({ product, href }: LandingProps) {
         </Container>
       </section>
 
+      {/* In hand */}
+      <section className="overflow-hidden border-b-2 border-black">
+        <Container wide className="grid items-center gap-16 py-16 lg:grid-cols-2 lg:py-24">
+          <PrintedMagazine />
+          <div>
+            <h2 className="font-display text-5xl leading-[0.95] font-black tracking-tight lg:text-6xl">
+              Как настоящий, только про своего
+            </h2>
+            <dl className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6">
+              {[
+                ['Формат', 'A4, как у глянцевых журналов'],
+                ['Страниц', product.formats.map((f) => f.name.match(/\d+/)?.[0]).filter(Boolean).join(' или ')],
+                ['Бумага', large.specs.find((s) => /бумага/i.test(s)) ?? 'Мелованная'],
+                ['Обложка', large.specs.find((s) => /обложк/i.test(s)) ?? 'Мягкая глянцевая'],
+              ].map(([term, value]) => (
+                <div key={term} className="border-t-2 border-black pt-3">
+                  <dt className="text-sm text-muted">{term}</dt>
+                  <dd className="mt-1 text-lg font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {guestCopy && (
+              <p className="mt-10 max-w-[52ch] text-lg leading-relaxed">
+                На праздник часто берут журналы для гостей: {guestCopy.name.toLowerCase()} стоит{' '}
+                <strong className="font-semibold">{formatTenge(guestCopy.unitPrice)}</strong>. Гости увозят номер домой, а
+                герой получает автографы на последних страницах.
+              </p>
+            )}
+          </div>
+        </Container>
+      </section>
+
+      {/* Prices */}
       <section id="prices" className="border-b-2 border-black">
         <Container wide className="py-16 lg:py-24">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <h2 className="font-display text-5xl leading-none font-black tracking-tight lg:text-6xl">Цены</h2>
             <p className="max-w-[44ch] leading-relaxed text-muted">
-              Предоплата {formatTenge(product.deposit)}. Остальное после того, как вы одобрите макет.
+              Предоплата {formatTenge(product.deposit)}. Остальное — после того, как вы одобрите макет.
             </p>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-2">
             {product.formats.map((format) => (
               <article
                 key={format.id}
-                className={cn(
-                  'flex flex-col border-2 border-black p-6 sm:p-10',
-                  format.recommended && 'bg-black text-white',
-                )}
+                className={cn('flex flex-col border-2 border-black p-6 sm:p-10', format.recommended && 'bg-black text-white')}
               >
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="font-display text-3xl leading-tight font-bold sm:text-4xl">{format.name}</h3>
@@ -168,35 +303,51 @@ export function GlossyLanding({ product, href }: LandingProps) {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-10 font-display text-5xl font-black italic">{formatTenge(format.price)}</p>
+                <div className="mt-auto flex flex-wrap items-end justify-between gap-4 pt-10">
+                  <p className="font-display text-5xl font-black italic">{formatTenge(format.price)}</p>
+                  <ButtonLink
+                    href={href('/create')}
+                    className={cn(
+                      format.recommended ? 'bg-glossy-fuchsia! text-white! hover:bg-white! hover:text-black!' : 'bg-black! text-white! hover:bg-glossy-fuchsia!',
+                    )}
+                  >
+                    Выбрать
+                  </ButtonLink>
+                </div>
               </article>
             ))}
           </div>
-          {guestCopy && (
-            <p className="mt-8 max-w-[60ch] text-lg leading-relaxed">
-              На праздник часто берут журналы для гостей: {guestCopy.name.toLowerCase()} стоит{' '}
-              <strong className="font-semibold">{formatTenge(guestCopy.unitPrice)}</strong>.
-            </p>
+          {product.extras.length > 0 && (
+            <ul className="mt-10 grid gap-x-10 gap-y-4 sm:grid-cols-3">
+              {product.extras.map((extra) => (
+                <li key={extra.id} className="border-t border-black pt-3">
+                  <p className="font-semibold">
+                    {extra.name} <span className="text-glossy-fuchsia">+{formatTenge(extra.unitPrice)}</span>
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{extra.description}</p>
+                </li>
+              ))}
+            </ul>
           )}
         </Container>
       </section>
 
+      {/* FAQ */}
       <section>
         <Container wide className="grid gap-10 py-16 lg:grid-cols-12 lg:py-24">
-          <h2 className="font-display text-5xl leading-none font-black tracking-tight lg:col-span-4 lg:text-6xl">
-            Вопросы
-          </h2>
+          <h2 className="font-display text-5xl leading-none font-black tracking-tight lg:col-span-4 lg:text-6xl">Вопросы</h2>
           <Faq items={faq} className="lg:col-span-8" />
         </Container>
       </section>
 
+      {/* Final call */}
       <section className="bg-glossy-fuchsia text-white">
         <Container wide className="flex flex-col items-start gap-8 py-16 lg:py-24">
           <p className="max-w-[14ch] font-display text-[clamp(3rem,7vw,7rem)] leading-[0.9] font-black tracking-tight italic">
             Ваш человек заслуживает обложки
           </p>
           <ButtonLink href={href('/create')} size="lg" className="bg-black! text-white! hover:bg-white! hover:text-black!">
-            {brandCta}
+            {CTA}
           </ButtonLink>
         </Container>
       </section>
@@ -204,4 +355,25 @@ export function GlossyLanding({ product, href }: LandingProps) {
   );
 }
 
-const brandCta = 'Собрать журнал';
+/** The printed issue in 3D: cover, spine and a stack of page edges. */
+function PrintedMagazine() {
+  const cover = samplePage(1);
+  return (
+    <div aria-hidden className="mx-auto w-full max-w-[380px] [perspective:1600px]">
+      <div className="relative [transform-style:preserve-3d] [transform:rotateY(-24deg)_rotateX(6deg)]">
+        {/* Page edges, slightly offset behind the cover. */}
+        <div className="absolute inset-0 translate-x-[6px] translate-y-[3px] bg-[repeating-linear-gradient(90deg,#fff_0_1px,#e8e4e6_1px_2px)] [transform:translateZ(-10px)]" />
+        <div className="absolute inset-y-0 left-0 w-3 origin-left bg-black [transform:rotateY(90deg)]" />
+        <Image
+          src={cover.src}
+          alt=""
+          width={SAMPLE_PAGE_SIZE.width}
+          height={SAMPLE_PAGE_SIZE.height}
+          sizes="380px"
+          className="relative block h-auto w-full shadow-[30px_40px_60px_-30px_rgba(0,0,0,0.6)]"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/25 via-transparent to-black/10" />
+      </div>
+    </div>
+  );
+}

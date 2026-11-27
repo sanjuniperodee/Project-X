@@ -81,3 +81,12 @@ omit the prefix. Always build links inside a brand with those helpers, never wit
 3. Register it in `src/brands/index.ts` and add a `[data-brand='<id>']` token block in `app/globals.css`
    (plus fonts in `shared/ui/fonts.ts` if needed). TypeScript will point out anything missing,
    e.g. the hub's preview panel.
+
+## Пример номера Cover Me на лендинге
+
+`public/coverme/issue/*.webp` — настоящие страницы номера на 24 страницы. Их свёрстал layout-сервис
+(шаблон `glossy-magazine@2`) по демо-анкете и растеризовал из печатного PDF без вылетов под обрез.
+Список рубрик — в `src/brands/glossy/sample-issue.ts`. После изменения шаблона страницы нужно перегенерировать:
+собрать демо-номер через `LayoutService.render` (см. `services/layout/scripts/sample.ts`), затем
+`pdftoppm -r 110 -png layout.pdf r` и обрезать по 13 px с каждой стороны.
+Фото в демо-номере и `public/coverme/cover-portrait.jpg` взяты с Unsplash (Unsplash License).

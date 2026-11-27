@@ -80,8 +80,11 @@ export const glossyTemplate: Template = {
       if (result.corePages <= target) break;
       result = buildMagazine(input, metrics, target, scale, false);
     }
-    // Few materials for the format (typically 36 pages): give every friend a page of their own.
-    if (result.spareGuestPages > 0 && input.source.contributions.length > 0) {
+    // 36 pages promise every friend a page of their own; a short 24-page issue gets them too when
+    // materials run short. Kept only when the issue still fits its format.
+    const friendsCount = input.source.contributions.length;
+    const preferSpacious = target >= 36 && friendsCount > 0 && friendsCount <= 10;
+    if (friendsCount > 0 && (preferSpacious || result.spareGuestPages > 0)) {
       const spacious = buildMagazine(input, metrics, target, 1, true);
       if (spacious.composer.pages.length <= target) result = spacious;
     }
