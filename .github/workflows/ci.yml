@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: px
+          POSTGRES_PASSWORD: px
+          POSTGRES_DB: px
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U px" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test databases
+        run: psql postgres://px:px@localhost:5432/px -c 'CREATE DATABASE px_projects_test' -c 'CREATE DATABASE px_payments_test'
+      - name: Install
+        run: |
+          for p in shared/contracts shared/service-kit services/* frontend; do
+            [ -f "$p/package.json" ] && (cd "$p" && npm ci --no-audit --no-fund)
+          done
+      - run: make typecheck
+      - run: make test
+      - name: Frontend lint and build
+        run: cd frontend && npm run lint && npm run build

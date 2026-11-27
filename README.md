@@ -149,6 +149,10 @@ docker compose up --build
 
 Браузер ходит в API только через фронтенд (`/api/*` того же домена), а фронтенд передаёт IP клиента в `X-Forwarded-For`. Поэтому в проде держите gateway в приватной сети за фронтендом или балансировщиком (`TRUST_PROXY=true`). Порт 8080 в compose открыт только для локальной отладки. Наружу должны смотреть только webhooks платёжных систем: `/api/webhooks/payments/*`.
 
+### Прод
+
+Стенд на общем сервере рядом с MyBooks и DoseWear: https://px.185.102.75.191.sslip.io (хаб и `/admin`), бренды на `coverme.`, `shezhire.`, `mygame.185.102.75.191.sslip.io`. PM2, Kaspi Pay через общий kaspi-pos, фото в S3. Как устроено и как выкатывать — `deploy/README.md`.
+
 ### Локальная разработка
 
 ```bash

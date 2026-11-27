@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 // End-to-end smoke test of the order path through the public site (frontend /api passthrough):
 // create → questionnaire → mock deposit → invite contribution → submit to designer → AI draft → /admin.
-//   node deploy/smoke.mjs http://localhost:3000 [product]
+//   node deploy/smoke.mjs http://localhost:3000 [product] [--no-pay]
+// --no-pay: for a site on a real provider (Kaspi bills a real phone): stops before checkout, so no submit / draft.
 // Admin check needs ADMIN_USER / ADMIN_PASSWORD in the environment (skipped otherwise).
-const BASE = (process.argv[2] ?? 'http://localhost:3000').replace(/\/$/, '');
-const PRODUCT = process.argv[3] ?? 'glossy';
+const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const NO_PAY = process.argv.includes('--no-pay');
+const BASE = (args[0] ?? 'http://localhost:3000').replace(/\/$/, '');
+const PRODUCT = args[1] ?? 'glossy';
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -37,7 +40,12 @@ async function upload() {
   form.append('file', new Blob([PNG], { type: 'image/png' }), 'smoke.png');
   const res = await fetch(`${BASE}/api/media/uploads`, { method: 'POST', body: form });
   if (!res.ok) throw new Error(`upload → ${res.status} ${await res.text()}`);
-  return res.json();
+  const media = await res.json();
+  // Read it back: proves the storage driver (disk or S3) round-trips the bytes.
+  const back = await fetch(new URL(media.url, BASE));
+  const bytes = Buffer.from(await back.arrayBuffer());
+  if (!back.ok || !bytes.equals(PNG)) throw new Error(`uploaded file ${media.url} → ${back.status}, ${bytes.length} bytes`);
+  return media;
 }
 
 async function value(field) {
@@ -108,13 +116,6 @@ for (const s of product.steps.filter((s) => s.audience === 'owner')) {
 }
 log('owner questionnaire saved (photos uploaded through /api/media)');
 
-const checkout = await api('POST', `/projects/${editKey}/checkout`, { kind: 'deposit' });
-const payPath = new URL(checkout.redirectUrl, BASE).pathname;
-await page(payPath);
-await api('POST', `/payments/${checkout.paymentId}/mock/confirm`, { outcome: 'success' });
-await waitFor('deposit_paid', async () => (await api('GET', `/projects/${editKey}`)).status === 'deposit_paid');
-log(`mock deposit paid via ${payPath}, status deposit_paid`);
-
 const contributorSteps = product.steps.filter((s) => s.audience === 'contributor');
 if (product.collaboration?.enabled && contributorSteps.length) {
   await page(`/${PRODUCT}/invite/${inviteKey}`);
@@ -124,11 +125,23 @@ if (product.collaboration?.enabled && contributorSteps.length) {
   log('invite page renders, contribution accepted');
 }
 
-const submitted = await api('POST', `/projects/${editKey}/submit`);
-log(`sent to designer, status ${submitted.status}`);
+if (NO_PAY) {
+  log('payment, submit and AI draft skipped (--no-pay)');
+} else {
+  const checkout = await api('POST', `/projects/${editKey}/checkout`, { kind: 'deposit' });
+  const payPath = new URL(checkout.redirectUrl, BASE).pathname;
+  await page(payPath);
+  await api('POST', `/payments/${checkout.paymentId}/mock/confirm`, { outcome: 'success' });
+  await waitFor('deposit_paid', async () => (await api('GET', `/projects/${editKey}`)).status === 'deposit_paid');
+  log(`mock deposit paid via ${payPath}, status deposit_paid`);
 
-const draft = await waitFor('AI draft', async () => (await api('GET', `/projects/${editKey}`)).draft);
-log(`AI draft received: "${draft.title}" (${draft.sections?.length ?? 0} sections)`);
+  const submitted = await api('POST', `/projects/${editKey}/submit`);
+  log(`sent to designer, status ${submitted.status}`);
+
+  const draft = await waitFor('AI draft', async () => (await api('GET', `/projects/${editKey}`)).draft);
+  log(`AI draft received: "${draft.title}" (${draft.sections?.length ?? 0} sections)`);
+
+}
 
 if (process.env.ADMIN_USER && process.env.ADMIN_PASSWORD) {
   const auth = 'Basic ' + Buffer.from(`${process.env.ADMIN_USER}:${process.env.ADMIN_PASSWORD}`).toString('base64');
