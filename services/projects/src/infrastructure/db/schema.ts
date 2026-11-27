@@ -1,6 +1,6 @@
-import type { Answers, Customer, Draft, EventEnvelope, ProductId, ProjectStatus, Quote } from '@px/contracts';
+import type { Answers, Customer, DesignMode, Draft, EventEnvelope, LayoutPage, LayoutStatus, ProductId, ProjectStatus, Quote } from '@px/contracts';
 import { sql } from 'drizzle-orm';
-import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -20,6 +20,8 @@ export const projects = pgTable(
     editKey: text('edit_key').notNull().unique(),
     inviteKey: text('invite_key').notNull().unique(),
     paidAmount: integer('paid_amount').notNull().default(0),
+    designMode: text('design_mode').$type<DesignMode>().notNull().default('auto'),
+    revisionsUsed: integer('revisions_used').notNull().default(0),
     ...timestamps,
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
@@ -54,6 +56,28 @@ export const statusChanges = pgTable(
     ...timestamps,
   },
   (t) => [index('status_changes_project_idx').on(t.projectId, t.createdAt)],
+);
+
+/** Layout versions made by the layout service, with the customer's decision on each. */
+export const layouts = pgTable(
+  'layouts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    status: text('status').$type<LayoutStatus>().notNull(),
+    pdfUrl: text('pdf_url').notNull(),
+    pages: jsonb('pages').$type<LayoutPage[]>().notNull(),
+    template: text('template').notNull(),
+    warnings: jsonb('warnings').$type<string[]>().notNull().default([]),
+    feedback: text('feedback'),
+    ...timestamps,
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  // One row per version: a redelivered layout.generated cannot create a duplicate.
+  (t) => [uniqueIndex('layouts_project_version_idx').on(t.projectId, t.version)],
 );
 
 /** Transactional outbox: events are committed together with state and published by the relay. */

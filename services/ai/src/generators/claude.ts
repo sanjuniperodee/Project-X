@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { DraftContent } from '@px/contracts';
 import { describeProject } from '../prompts/describe';
-import { PRODUCT_INSTRUCTIONS, SYSTEM_PROMPT } from '../prompts/instructions';
+import { PRODUCT_INSTRUCTIONS, revisionBrief, SYSTEM_PROMPT } from '../prompts/instructions';
 import type { DraftGenerator, DraftRequest } from './generator';
 
 /** JSON schema for structured outputs; mirrors the DraftContent contract. */
@@ -59,7 +59,7 @@ export class ClaudeDraftGenerator implements DraftGenerator {
       messages: [
         {
           role: 'user',
-          content: `${PRODUCT_INSTRUCTIONS[request.product.id]}\n\n<materials>\n${describeProject(request)}\n</materials>`,
+          content: `${PRODUCT_INSTRUCTIONS[request.product.id]}\n\n<materials>\n${describeProject(request)}\n</materials>${request.revision ? revisionBrief(request.revision) : ''}`,
         },
       ],
     });

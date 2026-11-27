@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { calculateQuote, type Product, type ProjectView } from '@px/contracts';
+import { calculateQuote, type AdminProjectView, type Product } from '@px/contracts';
 import { createEnvelope } from '@px/service-kit';
 import { InMemoryEventBus } from '@px/service-kit/testing';
 import { sql } from 'drizzle-orm';
@@ -43,7 +43,7 @@ const whatsapp: WhatsAppGateway = {
 };
 const catalog: CatalogGateway = { products: async () => [product], product: async () => product };
 
-const store = new Map<string, ProjectView & { editKey: string }>();
+const store = new Map<string, AdminProjectView>();
 const checkouts: { editKey: string; kind: string }[] = [];
 const projects: ProjectsGateway = {
   create: async (req) => {
@@ -59,12 +59,15 @@ const projects: ProjectsGateway = {
       answers: {},
       contributions: [],
       draft: null,
+      layout: null,
+      design: { mode: 'auto', revisionsUsed: 0, revisionsLimit: 3 },
+      layouts: [],
       inviteKey: `inv-${id}`,
       paidAmount: 0,
       history: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    } as unknown as ProjectView & { editKey: string };
+    } as unknown as AdminProjectView;
     store.set(view.editKey, view);
     return { id, editKey: view.editKey, inviteKey: view.inviteKey };
   },

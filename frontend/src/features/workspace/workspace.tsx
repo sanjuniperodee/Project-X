@@ -22,6 +22,7 @@ import { Contributions } from './contributions';
 import { DraftPreview } from './draft-preview';
 import { History } from './history';
 import { InvitePanel } from './invite-panel';
+import { LayoutReview } from './layout-review';
 import { PaymentPanel } from './payment-panel';
 import { StatusTimeline } from './status-timeline';
 
@@ -128,7 +129,9 @@ export function Workspace({
         )}
       </header>
 
-      {project.draft && <DraftPreview draft={project.draft} cardsTitle={copy.draftCardsTitle} />}
+      <LayoutReview editKey={editKey} project={project} onChange={setProject} />
+      {/* Before the first layout the draft shows what the texts will be; after it, the layout says it all. */}
+      {project.draft && !project.layout && <DraftPreview draft={project.draft} cardsTitle={copy.draftCardsTitle} />}
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <section aria-labelledby="questionnaire-title" className="min-w-0">

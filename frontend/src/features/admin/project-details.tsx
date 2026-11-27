@@ -4,6 +4,7 @@ import { getBrand } from '@/brands';
 import { DraftPreview } from '../workspace/draft-preview';
 import { History } from '../workspace/history';
 import { Contributions } from '../workspace/contributions';
+import { LayoutVersions } from './layout-versions';
 import { StatusForm } from './status-form';
 
 export function ProjectDetails({ project, product }: { project: AdminProjectView; product: Product }) {
@@ -64,6 +65,8 @@ export function ProjectDetails({ project, product }: { project: AdminProjectView
           <StatusForm projectId={project.id} status={project.status} />
         </section>
       </div>
+
+      <LayoutVersions project={project} />
 
       {project.draft && <DraftPreview draft={project.draft} cardsTitle={brand.copy.draftCardsTitle} />}
 

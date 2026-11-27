@@ -12,6 +12,8 @@ import {
   type CreateProjectResponse,
   type EventEnvelope,
   type InviteView,
+  type LayoutSource,
+  type LayoutView,
   type PaymentKind,
   type Product,
   type ProductId,
@@ -22,6 +24,14 @@ import {
 } from '@px/contracts';
 import { AppError, createEnvelope } from '@px/service-kit';
 import { generateKey } from '../domain/keys';
+import {
+  acceptLayout,
+  approveLayout,
+  assertLayoutApproved,
+  handOverToStudio,
+  requestLayoutChanges,
+  type Layout,
+} from '../domain/layout';
 import {
   amountDue,
   applyPayment,
@@ -41,6 +51,8 @@ export interface ProjectServiceDeps {
   payments: PaymentsGateway;
   /** Absolute URL of the owner's workspace on the frontend. */
   workspaceUrl: (project: { productId: ProductId; editKey: string }) => string;
+  /** Automatic revision rounds before a project goes to a designer. */
+  revisionsLimit: number;
 }
 
 const PAYMENT_TITLES: Record<PaymentKind, string> = { deposit: 'Предоплата', balance: 'Оплата остатка' };
@@ -74,6 +86,8 @@ export class ProjectService {
       editKey: generateKey(),
       inviteKey: generateKey(),
       paidAmount: 0,
+      designMode: 'auto',
+      revisionsUsed: 0,
       createdAt: now,
       updatedAt: now,
       submittedAt: null,
@@ -121,26 +135,11 @@ export class ProjectService {
       if (locked.status === 'draft') {
         throw AppError.conflict('Сначала внесите предоплату — после неё проект уходит дизайнеру');
       }
-      const change = transition(locked, 'in_design', 'Материалы отправлены дизайнеру');
+      const change = transition(locked, 'in_design', 'Материалы отправлены на вёрстку');
       await tx.update(locked);
       await this.recordChange(tx, locked, change);
 
-      const contributions = await this.deps.repository.contributions(locked.id);
-      await tx.enqueue(
-        createEnvelope('projects.submitted', {
-          projectId: locked.id,
-          productId: locked.productId,
-          subject: locked.subject,
-          formatId: locked.quote.formatId,
-          answers: locked.answers,
-          contributions: contributions.map((c) => ({
-            id: c.id,
-            authorName: c.authorName,
-            answers: c.answers,
-            createdAt: c.createdAt.toISOString(),
-          })),
-        }),
-      );
+      await tx.enqueue(createEnvelope('projects.submitted', await this.materials(locked)));
       return locked;
     });
     return this.toView(submitted);
@@ -150,6 +149,7 @@ export class ProjectService {
     const project = await this.requireByEditKey(editKey);
     const product = await this.deps.catalog.product(project.productId);
     const amount = amountDue(project, kind);
+    if (kind === 'balance') assertLayoutApproved((await this.deps.repository.layouts(project.id))[0] ?? null);
 
     const payment = await this.deps.payments.createPayment({
       projectId: project.id,
@@ -160,6 +160,66 @@ export class ProjectService {
       customerPhone: project.customer.phone,
     });
     return { paymentId: payment.id, redirectUrl: payment.redirectUrl };
+  }
+
+  // ---------- Layout decisions ----------
+
+  /** The customer approves the layout version they looked at; the balance payment opens. */
+  async approveLayout(editKey: string, version: number): Promise<ProjectView> {
+    const project = await this.deps.repository.transaction(async (tx) => {
+      const locked = await this.lock(tx, { editKey });
+      const layout = await tx.latestLayout(locked.id);
+      approveLayout(locked, layout, version);
+      await tx.updateLayout(layout!);
+      await tx.update(locked);
+      await tx.enqueue(
+        createEnvelope('projects.layout_approved', { projectId: locked.id, productId: locked.productId, version }),
+      );
+      return locked;
+    });
+    return this.toView(project);
+  }
+
+  /**
+   * The customer asks for changes. Within the limit the draft is rewritten by the AI and laid out again;
+   * after that, or if the layout came from the studio, a designer takes over.
+   */
+  async requestLayoutChanges(editKey: string, version: number | null, comment: string): Promise<ProjectView> {
+    const project = await this.deps.repository.transaction(async (tx) => {
+      const locked = await this.lock(tx, { editKey });
+      const layout = await tx.latestLayout(locked.id);
+      // Without a draft to rewrite there is nothing to regenerate automatically.
+      const limit = locked.draft ? this.deps.revisionsLimit : 0;
+      const outcome = requestLayoutChanges(locked, layout, version, comment, limit);
+      if (layout) await tx.updateLayout(layout);
+      await tx.update(locked);
+      await this.recordChange(tx, locked, outcome.change);
+      if (outcome.next === 'auto' && locked.draft && layout) {
+        const { title, lead, sections, cards } = locked.draft;
+        await tx.enqueue(
+          createEnvelope('projects.revision_requested', {
+            ...(await this.materials(locked)),
+            revision: outcome.revision!,
+            layoutVersion: layout.version,
+            comment,
+            draft: { title, lead, sections, cards },
+          }),
+        );
+      } else {
+        await tx.enqueue(
+          createEnvelope('projects.design_handoff', {
+            projectId: locked.id,
+            productId: locked.productId,
+            reason:
+              layout?.status === 'changes_requested'
+                ? `Лимит автоматических правок исчерпан (${locked.revisionsUsed} из ${limit}). Клиент просит: ${comment}`
+                : `Клиент просит правки: ${comment}`,
+          }),
+        );
+      }
+      return locked;
+    });
+    return this.toView(project);
   }
 
   // ---------- Contributors ----------
@@ -215,13 +275,22 @@ export class ProjectService {
   async adminView(id: string): Promise<AdminProjectView> {
     const project = await this.deps.repository.findById(id);
     if (!project) throw AppError.notFound('Проект');
-    return { ...(await this.toView(project)), editKey: project.editKey };
+    const [view, layouts] = await Promise.all([this.toView(project), this.deps.repository.layouts(project.id)]);
+    return { ...view, editKey: project.editKey, layouts: layouts.map(toLayoutView) };
   }
 
   async changeStatus(id: string, to: ProjectStatus, note: string | null): Promise<AdminProjectView> {
     await this.deps.repository.transaction(async (tx) => {
       const locked = await this.lock(tx, { id });
       const change = manualTransition(locked, to, note);
+      // A manual move takes the project out of the automatic loop: the studio decides from here.
+      const layout = await tx.latestLayout(locked.id);
+      if (layout?.status === 'pending') {
+        layout.status = 'discarded';
+        layout.decidedAt = new Date();
+        await tx.updateLayout(layout);
+      }
+      if (to === 'in_design') locked.designMode = 'studio';
       await tx.update(locked);
       await this.recordChange(tx, locked, change);
     });
@@ -250,7 +319,69 @@ export class ProjectService {
     });
   }
 
+  async handleLayoutGenerated(event: EventEnvelope<'layout.generated'>): Promise<void> {
+    const { projectId, version, pdfUrl, pages, template, warnings } = event.data;
+    await this.deps.repository.transaction(async (tx) => {
+      if (!(await tx.markProcessed(event.id))) return;
+      const project = await this.lock(tx, { id: projectId });
+      const { layout, change } = acceptLayout(project, { version, pdfUrl, pages, template, warnings });
+      // The same version twice (a re-generated draft) is ignored: the first one is already shown.
+      if (!(await tx.insertLayout(layout))) return;
+      await tx.update(project);
+      if (change) await this.recordChange(tx, project, change);
+    });
+  }
+
+  async handleLayoutFailed(event: EventEnvelope<'layout.failed'>): Promise<void> {
+    await this.deps.repository.transaction(async (tx) => {
+      if (!(await tx.markProcessed(event.id))) return;
+      const project = await this.lock(tx, { id: event.data.projectId });
+      if (!handOverToStudio(project)) return;
+      await tx.update(project);
+      await tx.enqueue(
+        createEnvelope('projects.design_handoff', {
+          projectId: project.id,
+          productId: project.productId,
+          reason: `Автоматическая вёрстка не удалась: ${event.data.reason}`.slice(0, 1000),
+        }),
+      );
+    });
+  }
+
+  // ---------- Internal ----------
+
+  /** What the layout service needs to typeset a project. */
+  async layoutSource(id: string): Promise<LayoutSource> {
+    const project = await this.deps.repository.findById(id);
+    if (!project) throw AppError.notFound('Проект');
+    const [materials, layouts] = await Promise.all([this.materials(project), this.deps.repository.layouts(id)]);
+    return {
+      ...materials,
+      status: project.status,
+      designMode: project.designMode,
+      nextVersion: (layouts[0]?.version ?? 0) + 1,
+    };
+  }
+
   // ---------- Helpers ----------
+
+  private async materials(project: Project) {
+    const contributions = await this.deps.repository.contributions(project.id);
+    return {
+      projectId: project.id,
+      productId: project.productId,
+      subject: project.subject,
+      formatId: project.quote.formatId,
+      answers: project.answers,
+      contributions: contributions.map((c) => ({
+        id: c.id,
+        authorName: c.authorName,
+        answers: c.answers,
+        createdAt: c.createdAt.toISOString(),
+      })),
+    };
+  }
+
 
   private async requireByEditKey(editKey: string): Promise<Project> {
     const project = await this.deps.repository.findByEditKey(editKey);
@@ -290,9 +421,10 @@ export class ProjectService {
   }
 
   private async toView(project: Project): Promise<ProjectView> {
-    const [contributions, history] = await Promise.all([
+    const [contributions, history, layouts] = await Promise.all([
       this.deps.repository.contributions(project.id),
       this.deps.repository.history(project.id),
+      this.deps.repository.layouts(project.id),
     ]);
     return {
       id: project.id,
@@ -309,6 +441,8 @@ export class ProjectService {
         createdAt: c.createdAt.toISOString(),
       })),
       draft: project.draft,
+      layout: layouts[0] ? toLayoutView(layouts[0]) : null,
+      design: { mode: project.designMode, revisionsUsed: project.revisionsUsed, revisionsLimit: this.deps.revisionsLimit },
       inviteKey: project.inviteKey,
       paidAmount: project.paidAmount,
       history: history.map((h) => ({ from: h.from, to: h.to, note: h.note, createdAt: h.createdAt.toISOString() })),
@@ -316,4 +450,18 @@ export class ProjectService {
       updatedAt: project.updatedAt.toISOString(),
     };
   }
+}
+
+function toLayoutView(layout: Layout): LayoutView {
+  return {
+    version: layout.version,
+    status: layout.status,
+    pdfUrl: layout.pdfUrl,
+    pages: layout.pages,
+    template: layout.template,
+    warnings: layout.warnings,
+    feedback: layout.feedback,
+    createdAt: layout.createdAt.toISOString(),
+    decidedAt: layout.decidedAt?.toISOString() ?? null,
+  };
 }

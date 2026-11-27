@@ -15,6 +15,7 @@ const { service, relay } = await buildProjectsApp({
   payments: new HttpPaymentsGateway(config.PAYMENTS_URL),
   frontendUrl: config.FRONTEND_URL,
   productUrls: config.PRODUCT_URLS,
+  layoutRevisionLimit: config.LAYOUT_REVISION_LIMIT,
   logLevel: config.LOG_LEVEL,
   prettyLogs: config.NODE_ENV === 'development',
 });

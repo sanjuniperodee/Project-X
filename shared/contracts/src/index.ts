@@ -12,6 +12,7 @@ export * from './validation';
 export * from './products';
 export * from './quote';
 export * from './drafts';
+export * from './layouts';
 export * from './projects';
 export * from './payments';
 export * from './media';

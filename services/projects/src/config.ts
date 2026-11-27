@@ -27,5 +27,7 @@ export const config = loadConfig({
       ) as Partial<Record<ProductId, string>>,
     ),
   MIGRATIONS_DIR: z.string().default('./drizzle'),
+  /** Automatic layout revision rounds before the project goes to a designer in the studio. */
+  LAYOUT_REVISION_LIMIT: z.coerce.number().int().min(0).max(10).default(3),
 });
 export type ProjectsConfig = typeof config;

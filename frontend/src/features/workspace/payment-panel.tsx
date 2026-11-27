@@ -47,6 +47,21 @@ export function PaymentPanel({ editKey, project, confirming }: { editKey: string
               Анкету можно заполнять уже сейчас. Остаток {formatTenge(quote.balance)} — после согласования макета.
             </p>
           </>
+        ) : status === 'awaiting_approval' && project.layout?.status === 'pending' ? (
+          <p className="text-[15px] leading-relaxed text-muted">
+            Оплата остатка {formatTenge(quote.total - project.paidAmount)} откроется, как только вы согласуете{' '}
+            <a href="#layout" className="underline underline-offset-4">
+              макет
+            </a>
+            .
+          </p>
+        ) : status === 'awaiting_approval' && project.layout?.status === 'approved' ? (
+          <>
+            <Button size="lg" className="w-full" loading={pending === 'balance'} onClick={() => void pay('balance')}>
+              Оплатить остаток {formatTenge(quote.total - project.paidAmount)}
+            </Button>
+            <p className="mt-2.5 text-sm leading-relaxed text-muted">Макет согласован. После оплаты отправим заказ в печать.</p>
+          </>
         ) : status === 'awaiting_approval' ? (
           <>
             <Button size="lg" className="w-full" loading={pending === 'balance'} onClick={() => void pay('balance')}>

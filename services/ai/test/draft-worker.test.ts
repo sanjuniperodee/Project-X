@@ -75,3 +75,37 @@ it('generates a draft for each submitted project and publishes it', async () => 
     draft: { title: 'MyGame: Отдел продаж', cards: [{ title: 'Мадина' }] },
   });
 });
+
+it('rewrites the draft when the customer asks for changes and marks the revision', async () => {
+  const bus = new InMemoryEventBus();
+  const requests: unknown[] = [];
+  await startDraftWorker({
+    bus,
+    generator: {
+      id: 'fake',
+      generate: async (request) => {
+        requests.push(request.revision);
+        return { ...request.revision!.previous, title: 'Новый заголовок' };
+      },
+    },
+    catalog: { product: async () => product },
+    log: { info() {}, warn() {}, error() {} },
+  });
+
+  const previous = { title: 'Старый', lead: 'L', sections: [], cards: [] };
+  await bus.publish('projects.revision_requested', { ...submitted, revision: 2, layoutVersion: 2, comment: 'Другой заголовок', draft: previous });
+  await bus.drain();
+
+  expect(requests).toEqual([{ round: 2, previous, comment: 'Другой заголовок' }]);
+  expect(bus.published.find((e) => e.type === 'ai.draft_generated')?.data).toMatchObject({
+    projectId: 'p-1',
+    revision: 2,
+    draft: { title: 'Новый заголовок' },
+  });
+});
+
+it('keeps the draft as is for a revision with the template generator', async () => {
+  const previous = { title: 'Старый', lead: 'L', sections: [], cards: [] };
+  const draft = await new TemplateDraftGenerator().generate({ product, project: submitted, revision: { round: 1, previous, comment: 'x' } });
+  expect(draft).toBe(previous);
+});

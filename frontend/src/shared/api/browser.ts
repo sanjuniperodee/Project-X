@@ -32,6 +32,12 @@ export const browserApi = {
 
   submit: (editKey: string) => call(`/projects/${key(editKey)}/submit`, ProjectView, { method: 'POST' }),
 
+  approveLayout: (editKey: string, version: number) =>
+    call(`/projects/${key(editKey)}/layout/approve`, ProjectView, { method: 'POST', body: { version } }),
+
+  requestLayoutChanges: (editKey: string, body: { version?: number; comment: string }) =>
+    call(`/projects/${key(editKey)}/layout/changes`, ProjectView, { method: 'POST', body }),
+
   checkout: (editKey: string, kind: PaymentKind) =>
     call(`/projects/${key(editKey)}/checkout`, CheckoutResponse, { method: 'POST', body: { kind } }),
 
