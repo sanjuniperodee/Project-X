@@ -8,6 +8,7 @@ import { cn } from '@/shared/lib/cn';
 import { IssueReader } from './issue-reader';
 import { LiveCover } from './live-cover';
 import { SAMPLE_PAGE_SIZE, samplePage } from './sample-issue';
+import { StyleShowcase } from './style-showcase';
 
 const CTA = 'Собрать журнал';
 
@@ -44,19 +45,25 @@ const RUBRICS = [
     result: 'Инфографика на чёрном развороте',
   },
   {
-    page: 11,
+    page: 10,
+    title: 'Гороскоп номера',
+    answer: 'Дата рождения — и больше ничего',
+    result: 'Шуточный гороскоп, который пишет ИИ про вашего человека',
+  },
+  {
+    page: 12,
     title: 'Правила жизни',
     answer: 'Принципы, по которым живёт герой',
     result: 'Нумерованный список и большой портрет',
   },
   {
-    page: 12,
+    page: 13,
     title: 'Говорят друзья',
     answer: 'Друзья пишут истории по вашей ссылке',
     result: 'У каждого своя страница с фото и пожеланием',
   },
   {
-    page: 16,
+    page: 17,
     title: 'Одним словом',
     answer: 'Каждый друг описывает героя одним словом',
     result: 'Плакат из слов на розовой странице',
@@ -83,6 +90,10 @@ export function GlossyLanding({ product, href }: LandingProps) {
     {
       q: 'Сколько нужно фотографий?',
       a: 'Для номера на 24 страницы хватит 20 снимков с телефона, для 36 страниц лучше от 40. Для обложки нужен один вертикальный портрет, где хорошо видно лицо. Чем больше кадров, тем богаче фотосессия.',
+    },
+    {
+      q: 'Какой стиль выбрать?',
+      a: '«Глянец» подходит почти всем. «Таблоид» — если компания любит подшучивать над именинником. «Нежность» — для годовщин, мам и бабушек. «Нуар» — для юбилеев, мужчин и всего, что должно выглядеть солидно. Стиль можно поменять, пока анкета не отправлена в редакцию.',
     },
     {
       q: 'Можно сделать журнал про пару или компанию?',
@@ -114,7 +125,7 @@ export function GlossyLanding({ product, href }: LandingProps) {
             <div className="grid gap-8 sm:grid-cols-2 sm:items-end">
               <p className="max-w-[42ch] text-lg leading-relaxed">
                 Настоящий глянец на {product.formats.map((f) => f.name.match(/\d+/)?.[0]).filter(Boolean).join(' или ')}{' '}
-                страниц об одном человеке: досье, интервью, правила жизни, хронология, фотосессия и истории от друзей.
+                страниц об одном человеке: досье, интервью, правила жизни, гороскоп, фотосессия и истории от друзей. В одном из четырёх стилей — от чёрно-белого глянца до громкого таблоида.
               </p>
               <div className="flex flex-col items-start gap-3">
                 <ButtonLink href={href('/create')} size="lg" className="bg-black! text-white! hover:bg-glossy-fuchsia!">
@@ -129,6 +140,22 @@ export function GlossyLanding({ product, href }: LandingProps) {
           <div className="mx-auto w-full max-w-[440px] lg:col-span-5 lg:mr-0">
             <LiveCover />
           </div>
+        </Container>
+      </section>
+
+      {/* Four styles */}
+      <section id="styles" className="border-b-2 border-black">
+        <Container wide className="py-16 lg:py-24">
+          <div className="mb-12 grid gap-6 lg:grid-cols-12">
+            <h2 className="font-display text-5xl leading-[0.95] font-black tracking-tight lg:col-span-7 lg:text-7xl">
+              Один человек&nbsp;— четыре разных журнала
+            </h2>
+            <p className="max-w-[44ch] self-end leading-relaxed text-muted lg:col-span-4 lg:col-start-9">
+              Это один и тот же номер, свёрстанный в четырёх стилях. Стиль выбираете в анкете — от него зависят шрифты,
+              цвета, обложка и даже голос текстов.
+            </p>
+          </div>
+          <StyleShowcase />
         </Container>
       </section>
 
@@ -187,6 +214,63 @@ export function GlossyLanding({ product, href }: LandingProps) {
         </Container>
       </section>
 
+      {/* AI art direction */}
+      <section className="border-b-2 border-black">
+        <Container wide className="py-16 lg:py-24">
+          <div className="grid gap-6 lg:grid-cols-12">
+            <h2 className="font-display text-5xl leading-[0.95] font-black tracking-tight lg:col-span-7 lg:text-6xl">
+              У каждого номера свой арт-директор
+            </h2>
+            <p className="max-w-[46ch] self-end leading-relaxed text-muted lg:col-span-4 lg:col-start-9">
+              Номер оформляет ИИ, который прочитал всё, что вы и друзья рассказали. Поэтому журнал не похож на шаблон:
+              он похож на вашего человека.
+            </p>
+          </div>
+          <div className="mt-14 grid gap-px bg-black lg:grid-cols-3">
+            <article className="flex flex-col gap-6 bg-white p-6 sm:p-8">
+              <h3 className="text-xl font-semibold">Цвет номера — из фото обложки</h3>
+              <div className="flex items-center gap-4">
+                <Image src="/coverme/cover-portrait.jpg" alt="" width={96} height={144} className="h-28 w-20 object-cover object-[50%_25%]" />
+                <span aria-hidden className="text-2xl">→</span>
+                <span className="grid size-20 place-items-end bg-[#aa0e2d] p-2 text-xs font-semibold text-white">#AA0E2D</span>
+              </div>
+              <p className="leading-relaxed text-muted">
+                Красный свитер на обложке — и весь номер получает глубокий красный: плашки, цифры, цитаты.
+              </p>
+            </article>
+            <article className="flex flex-col gap-6 bg-white p-6 sm:p-8">
+              <h3 className="text-xl font-semibold">Заголовки про вашего человека</h3>
+              <ul className="flex flex-col gap-3">
+                {[
+                  ['Вкусы героя', 'Бешбармак, флэт уайт и Ninety One'],
+                  ['Правила жизни', 'Кодекс Айгерим'],
+                  ['В цифрах', '17 стран и ни одного опоздания'],
+                ].map(([before, after]) => (
+                  <li key={before} className="flex flex-col">
+                    <span className="text-sm text-muted line-through decoration-glossy-fuchsia">{before}</span>
+                    <span className="font-display text-xl leading-snug font-black">{after}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="flex flex-col gap-6 bg-white p-6 sm:p-8">
+              <h3 className="text-xl font-semibold">Гороскоп, который пишется один раз</h3>
+              <Image
+                src={samplePage(10).src}
+                alt="Страница гороскопа из примера номера"
+                width={SAMPLE_PAGE_SIZE.width}
+                height={SAMPLE_PAGE_SIZE.height}
+                sizes="160px"
+                className="h-auto w-36 shadow-[0_14px_28px_-16px_rgba(0,0,0,0.6)]"
+              />
+              <p className="leading-relaxed text-muted">
+                «Юпитер советует купить автодом: маршрут прокладывать не нужно». Про любимые вещи, мечту и привычки героя.
+              </p>
+            </article>
+          </div>
+        </Container>
+      </section>
+
       {/* Friends */}
       <section className="bg-black text-white">
         <Container wide className="grid items-center gap-14 py-16 lg:grid-cols-12 lg:py-24">
@@ -209,7 +293,7 @@ export function GlossyLanding({ product, href }: LandingProps) {
               <p className="mt-3 w-fit rounded-lg rounded-tl-none bg-[#202c33] p-3 ring-1 ring-white/10">Уже написала! 😂</p>
             </div>
             <Image
-              src={samplePage(12).src}
+              src={samplePage(13).src}
               alt="Страница друга из примера номера"
               width={SAMPLE_PAGE_SIZE.width}
               height={SAMPLE_PAGE_SIZE.height}

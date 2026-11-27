@@ -1,6 +1,6 @@
 /**
  * The sample issue shown on the landing: real pages typeset by the layout service
- * (template glossy-magazine@2) from a demo questionnaire, rasterised from the print PDF.
+ * (template glossy-magazine@3, style «Глянец») from a demo questionnaire, rasterised from the print PDF.
  * Photos: Unsplash (Unsplash License). Regenerate the files when the template changes.
  */
 export interface SamplePage {
@@ -19,6 +19,7 @@ const RUBRICS = [
   'Вкусы героя',
   'Хронология',
   'В цифрах',
+  'Гороскоп номера',
   'Тогда и сейчас',
   'Правила жизни',
   'Говорят друзья',
@@ -29,7 +30,6 @@ const RUBRICS = [
   'Очерк',
   'Фотосессия',
   'Фотосессия',
-  'Пожелание друга',
   'Фотосессия',
   'Пожелание друга',
   'Пожелания гостей',
@@ -55,4 +55,10 @@ export function sampleSpreads(): SamplePage[][] {
   for (let i = 1; i < pages.length - 1; i += 2) spreads.push(pages.slice(i, Math.min(i + 2, pages.length - 1)));
   spreads.push([pages.at(-1)!]);
   return spreads;
+}
+
+/** The same issue in each style: its cover and three inner pages. */
+export const STYLE_PAGES = ['cover', 'tastes', 'numbers', 'rules'] as const;
+export function stylePage(style: string, page: (typeof STYLE_PAGES)[number]): string {
+  return `/coverme/styles/${style}/${page}.webp`;
 }
