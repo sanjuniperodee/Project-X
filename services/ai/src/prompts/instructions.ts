@@ -1,4 +1,4 @@
-import type { ProductId } from '@px/contracts';
+import type { DraftContent, ProductId } from '@px/contracts';
 
 /**
  * Per-product editorial brief. This is the place to tune the voice of each product;
@@ -32,3 +32,21 @@ export const SYSTEM_PROMPT = `Ты работаешь в студии персо
 Тебе передают ответы заказчика и его друзей или родных. Твоя задача — превратить их в черновик текстов для дизайнера.
 Пиши на русском языке, живо и конкретно, опираясь только на переданные материалы.
 Не упоминай, что текст написан ИИ, не добавляй служебных пометок.`;
+
+/**
+ * Appended when the customer asked for changes to the layout. The previous draft is the starting
+ * point: the model edits only what the customer asked for, so approved parts stay as they were.
+ */
+export function revisionBrief(revision: { round: number; previous: DraftContent; comment: string }): string {
+  return `
+
+Заказчик посмотрел свёрстанный макет по этому черновику и просит правки (круг ${revision.round}).
+<previous_draft>
+${JSON.stringify(revision.previous, null, 2)}
+</previous_draft>
+<customer_comment>
+${revision.comment}
+</customer_comment>
+Верни исправленный черновик целиком в той же структуре. Меняй только то, о чём просит заказчик; остальное оставь дословно.
+Если просьба касается фото или оформления, а не текста, сохрани текст без изменений.`;
+}

@@ -5,11 +5,13 @@ import type { DraftGenerator, DraftRequest } from './generator';
 /**
  * Deterministic generator that needs no external API: arranges the answers
  * into sections so the designer gets a structured brief. Default in development.
+ * It cannot apply free-text change requests: a revision returns the previous draft unchanged.
  */
 export class TemplateDraftGenerator implements DraftGenerator {
   readonly id = 'template';
 
-  async generate({ product, project }: DraftRequest): Promise<DraftContent> {
+  async generate({ product, project, revision }: DraftRequest): Promise<DraftContent> {
+    if (revision) return revision.previous;
     const sections = product.steps
       .filter((step) => step.audience === 'owner')
       .map((step) => ({ heading: step.title, body: describeStep(step, project.answers[step.id]) }))
