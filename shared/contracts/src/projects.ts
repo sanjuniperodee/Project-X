@@ -45,6 +45,12 @@ export function canTransition(from: ProjectStatus, to: ProjectStatus): boolean {
   return PROJECT_TRANSITIONS[from].includes(to);
 }
 
+/** Paid in full: from here the order goes to print and delivery. */
+export const PROJECT_STATUSES_PAID: readonly ProjectStatus[] = ['paid', 'printing', 'shipped', 'delivered'];
+
+/** Orders the studio still works on (not delivered, not cancelled). */
+export const PROJECT_STATUSES_ACTIVE: readonly ProjectStatus[] = ['draft', 'deposit_paid', 'in_design', 'awaiting_approval', 'paid', 'printing', 'shipped'];
+
 /** Statuses reached only through confirmed payments — the studio can never set them by hand. */
 export const PAYMENT_DRIVEN_STATUSES: readonly ProjectStatus[] = ['deposit_paid', 'paid'];
 
@@ -196,6 +202,9 @@ export const ProjectListItem = z.object({
   total: z.number().int(),
   paidAmount: z.number().int(),
   contributionsCount: z.number().int(),
+  designMode: DesignMode,
+  /** Gift date from the questionnaire (see DateField.role), the production deadline. */
+  deadline: z.iso.date().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -206,11 +215,23 @@ export const ProjectList = z.object({
 });
 export type ProjectList = z.infer<typeof ProjectList>;
 
+/** Internal note of the studio on a project; customers never see it. */
+export const ProjectNote = z.object({
+  id: z.string(),
+  text: z.string(),
+  author: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+});
+export type ProjectNote = z.infer<typeof ProjectNote>;
+
 /** Studio view: owner view plus edit key so the team can open the customer's workspace. */
 export const AdminProjectView = ProjectView.extend({
   editKey: z.string(),
   /** Every layout version, newest first. */
   layouts: z.array(LayoutView),
+  deadline: z.iso.date().nullable(),
+  /** Internal notes of the studio, newest first. */
+  notes: z.array(ProjectNote),
 });
 export type AdminProjectView = z.infer<typeof AdminProjectView>;
 

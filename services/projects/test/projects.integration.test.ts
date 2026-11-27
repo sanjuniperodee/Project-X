@@ -23,7 +23,10 @@ const product = Product.parse({
       id: 'hero',
       title: 'Hero',
       audience: 'owner',
-      fields: [{ id: 'name', type: 'text', label: 'Name', required: true }],
+      fields: [
+        { id: 'name', type: 'text', label: 'Name', required: true },
+        { id: 'party', type: 'date', label: 'Party', role: 'eventDate' },
+      ],
     },
     {
       id: 'insight',
@@ -126,9 +129,11 @@ describe('project lifecycle', () => {
   });
 
   it('requires the deposit before sending to the designer', async () => {
-    await http('PUT', `/projects/${editKey}/steps/hero`, { answers: { name: 'Айгерим' } });
+    await http('PUT', `/projects/${editKey}/steps/hero`, { answers: { name: 'Айгерим', party: '2026-12-12' } });
     const res = await http('POST', `/projects/${editKey}/submit`);
     expect(res.statusCode).toBe(409);
+    // The gift date from the questionnaire becomes the production deadline.
+    expect((await http('GET', `/admin/projects/${projectId}`)).json().deadline).toBe('2026-12-12');
   });
 
   it('charges the deposit computed on the server and applies the payment event once', async () => {
@@ -198,6 +203,72 @@ describe('project lifecycle', () => {
 
     const list = (await http('GET', '/admin/projects?status=paid')).json();
     expect(list.items).toHaveLength(1);
-    expect(list.items[0]).toMatchObject({ contributionsCount: 1, paidAmount: 35_000 });
+    expect(list.total).toBe(1);
+    expect(list.items[0]).toMatchObject({ contributionsCount: 1, paidAmount: 35_000, deadline: '2026-12-12' });
+  });
+});
+
+describe('studio back office', () => {
+  const create = async (subject: string, name: string, phone: string) => {
+    const res = await http('POST', '/projects', {
+      productId: 'glossy',
+      subject,
+      selection: { formatId: 'basic' },
+      customer: { name, phone },
+    });
+    return res.json() as { id: string; editKey: string };
+  };
+
+  it('filters, searches, sorts and pages the order list', async () => {
+    const a = await create('Ерлан', 'Мадина', '+7 777 000 11 22');
+    await create('Жанна', 'Мадина', '+7 777 000 11 22');
+    await http('PUT', `/projects/${a.editKey}/steps/hero`, { answers: { name: 'Ерлан', party: '2026-12-01' } });
+
+    const byPhone = (await http('GET', '/admin/projects?q=0001122')).json();
+    expect(byPhone.total).toBe(2);
+    const exact = (await http('GET', '/admin/projects?phone=%2B77770001122')).json();
+    expect(exact.total).toBe(2);
+    const byHero = (await http('GET', '/admin/projects?q=жан')).json();
+    expect(byHero.items.map((i: { subject: string }) => i.subject)).toEqual(['Жанна']);
+
+    const drafts = (await http('GET', '/admin/projects?status=draft,deposit_paid&sort=deadline')).json();
+    expect(drafts.items[0].subject).toBe('Ерлан'); // the nearest deadline first, no deadline last
+    expect(drafts.items.at(-1).deadline).toBeNull();
+
+    const page = (await http('GET', '/admin/projects?limit=1&offset=1')).json();
+    expect(page.items).toHaveLength(1);
+    expect(page.total).toBe(3);
+
+    const bad = await http('GET', '/admin/projects?status=nope');
+    expect(bad.statusCode).toBe(422);
+  });
+
+  it('counts the dashboard numbers', async () => {
+    const stats = (await http('GET', '/admin/stats')).json();
+    expect(stats.byStatus).toMatchObject({ paid: 1, draft: 2 });
+    expect(stats.byProduct).toEqual([{ productId: 'glossy', orders: 3, paidOrders: 1, revenue: 35_000 }]);
+    expect(stats.attention.toPrint).toBe(1);
+    expect(stats.attention.deadlineSoon).toBeGreaterThanOrEqual(0);
+    expect(stats.month.orders).toBe(3);
+    expect(stats.averageCheck).toBe(35_000);
+    expect(stats.funnel).toEqual({ created: 3, deposit: 1, paid: 1 });
+  });
+
+  it('groups customers by phone', async () => {
+    const customers = (await http('GET', '/admin/customers')).json();
+    expect(customers.total).toBe(2);
+    const madina = customers.items.find((c: { name: string }) => c.name === 'Мадина');
+    expect(madina).toMatchObject({ phone: '+77770001122', orders: 2, activeOrders: 2, revenue: 0, productIds: ['glossy'] });
+    expect((await http('GET', '/admin/customers?q=динар')).json().items[0].name).toBe('Динара');
+  });
+
+  it('keeps internal notes on a project', async () => {
+    const [first] = (await http('GET', '/admin/projects?sort=created')).json().items;
+    const empty = await http('POST', `/admin/projects/${first.id}/notes`, { text: ' ' });
+    expect(empty.statusCode).toBe(422);
+    await http('POST', `/admin/projects/${first.id}/notes`, { text: 'Позвонила, оплатит завтра', author: 'Аня' });
+    const view = (await http('POST', `/admin/projects/${first.id}/notes`, { text: 'Оплатила' })).json();
+    expect(view.notes.map((n: { text: string }) => n.text)).toEqual(['Оплатила', 'Позвонила, оплатит завтра']);
+    expect(view.notes[1].author).toBe('Аня');
   });
 });

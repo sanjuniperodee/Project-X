@@ -21,6 +21,8 @@ export function routeTable(config: GatewayConfig): Route[] {
     { prefix: '/api/projects', upstream: config.PROJECTS_URL, rewritePrefix: '/projects' },
     { prefix: '/api/invites', upstream: config.PROJECTS_URL, rewritePrefix: '/invites' },
     { prefix: '/api/admin/projects', upstream: config.PROJECTS_URL, rewritePrefix: '/admin/projects', admin: true },
+    { prefix: '/api/admin/stats', upstream: config.PROJECTS_URL, rewritePrefix: '/admin/stats', admin: true },
+    { prefix: '/api/admin/customers', upstream: config.PROJECTS_URL, rewritePrefix: '/admin/customers', admin: true },
     { prefix: '/api/admin/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/admin/payments', admin: true },
     { prefix: '/api/admin/whatsapp', upstream: config.SALES_URL, rewritePrefix: '/admin/whatsapp', admin: true },
     { prefix: '/api/admin/conversations', upstream: config.SALES_URL, rewritePrefix: '/admin/conversations', admin: true },

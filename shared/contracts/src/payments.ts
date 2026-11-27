@@ -33,6 +33,10 @@ export const PaymentView = z.object({
 });
 export type PaymentView = z.infer<typeof PaymentView>;
 
+/** Back office: every payment attempt of one project, newest first. */
+export const PaymentList = z.object({ items: z.array(PaymentView) });
+export type PaymentList = z.infer<typeof PaymentList>;
+
 /** Studio back office: the Kaspi Pay cashier the payments service bills through. */
 export const KaspiCashierStatus = z.object({
   /** false: payments run on another provider (mock in development). */

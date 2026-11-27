@@ -14,6 +14,8 @@ export interface PaymentRepository {
   findByExternalId(provider: string, externalId: string): Promise<Payment | null>;
   /** Pending payments of the provider created after `since`, oldest first. */
   listPending(provider: string, since: Date): Promise<Payment[]>;
+  /** Every payment of a project, newest first. */
+  listByProject(projectId: string): Promise<Payment[]>;
 }
 
 /** Key-value settings of the service. Values are opaque strings; encryption is the store's concern. */

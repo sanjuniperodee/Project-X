@@ -1,6 +1,6 @@
 import type { EventEnvelope } from '@px/contracts';
 import type { OutboxStore } from '@px/service-kit';
-import { and, asc, eq, gte, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm';
 import type { PaymentRepository, PaymentTransaction } from '../application/ports';
 import type { Payment } from '../domain/payment';
 import type { Database } from './db/client';
@@ -39,6 +39,11 @@ export class DrizzlePaymentRepository implements PaymentRepository {
 
   transaction<T>(work: (tx: PaymentTransaction) => Promise<T>): Promise<T> {
     return this.db.transaction((tx) => work(new DrizzlePaymentTransaction(tx)));
+  }
+
+  async listByProject(projectId: string) {
+    const rows = await this.db.select().from(payments).where(eq(payments.projectId, projectId)).orderBy(desc(payments.createdAt));
+    return rows as Payment[];
   }
 
   async findById(id: string) {

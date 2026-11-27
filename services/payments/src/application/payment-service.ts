@@ -33,6 +33,10 @@ export class PaymentService {
     return toView(payment);
   }
 
+  async listByProject(projectId: string): Promise<PaymentView[]> {
+    return (await this.repository.listByProject(projectId)).map(toView);
+  }
+
   async get(id: string): Promise<PaymentView> {
     const payment = await this.repository.findById(id);
     if (!payment) throw AppError.notFound('Платёж');

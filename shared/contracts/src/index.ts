@@ -19,3 +19,4 @@ export * from './media';
 export * from './events';
 export * from './errors';
 export * from './sales';
+export * from './admin';

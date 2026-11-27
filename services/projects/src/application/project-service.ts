@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
+  type AdminProjectPage,
+  type AdminProjectQuery,
+  type AdminStats,
+  type CustomerPage,
   calculateQuote,
   contributorSteps,
   ownerSteps,
@@ -17,7 +21,6 @@ import {
   type PaymentKind,
   type Product,
   type ProductId,
-  type ProjectListItem,
   type ProjectStatus,
   type ProjectView,
   type StepAnswers,
@@ -38,15 +41,17 @@ import {
   assertAcceptsContributions,
   attachDraft,
   manualTransition,
+  deadlineFrom,
   saveStepAnswers,
   transition,
   type Project,
   type StatusChange,
 } from '../domain/project';
-import type { CatalogGateway, PaymentsGateway, ProjectRepository, ProjectTransaction } from './ports';
+import type { BackOfficeQueries, CatalogGateway, PaymentsGateway, ProjectRepository, ProjectTransaction } from './ports';
 
 export interface ProjectServiceDeps {
   repository: ProjectRepository;
+  queries: BackOfficeQueries;
   catalog: CatalogGateway;
   payments: PaymentsGateway;
   /** Absolute URL of the owner's workspace on the frontend. */
@@ -88,6 +93,7 @@ export class ProjectService {
       paidAmount: 0,
       designMode: 'auto',
       revisionsUsed: 0,
+      deadline: null,
       createdAt: now,
       updatedAt: now,
       submittedAt: null,
@@ -118,6 +124,7 @@ export class ProjectService {
     const saved = await this.deps.repository.transaction(async (tx) => {
       const locked = await this.lock(tx, { editKey });
       saveStepAnswers(locked, step.id, result.data);
+      locked.deadline = deadlineFrom(product, locked.answers);
       await tx.update(locked);
       return locked;
     });
@@ -268,15 +275,34 @@ export class ProjectService {
 
   // ---------- Studio back office ----------
 
-  async list(filter: { status?: ProjectStatus; limit?: number }): Promise<ProjectListItem[]> {
-    return this.deps.repository.list({ status: filter.status, limit: Math.min(filter.limit ?? 100, 500) });
+  projects(query: AdminProjectQuery): Promise<AdminProjectPage> {
+    return this.deps.queries.projects(query);
+  }
+
+  stats(): Promise<AdminStats> {
+    return this.deps.queries.stats();
+  }
+
+  customers(query: { q?: string; limit: number; offset: number }): Promise<CustomerPage> {
+    return this.deps.queries.customers(query);
   }
 
   async adminView(id: string): Promise<AdminProjectView> {
     const project = await this.deps.repository.findById(id);
     if (!project) throw AppError.notFound('Проект');
-    const [view, layouts] = await Promise.all([this.toView(project), this.deps.repository.layouts(project.id)]);
-    return { ...view, editKey: project.editKey, layouts: layouts.map(toLayoutView) };
+    const [view, layouts, notes] = await Promise.all([
+      this.toView(project),
+      this.deps.repository.layouts(project.id),
+      this.deps.queries.notes(project.id),
+    ]);
+    return { ...view, editKey: project.editKey, layouts: layouts.map(toLayoutView), deadline: project.deadline, notes };
+  }
+
+  async addNote(id: string, note: { text: string; author: string | null }): Promise<AdminProjectView> {
+    const project = await this.deps.repository.findById(id);
+    if (!project) throw AppError.notFound('Проект');
+    await this.deps.queries.addNote(project.id, note);
+    return this.adminView(project.id);
   }
 
   async changeStatus(id: string, to: ProjectStatus, note: string | null): Promise<AdminProjectView> {

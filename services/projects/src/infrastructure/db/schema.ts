@@ -1,6 +1,6 @@
 import type { Answers, Customer, DesignMode, Draft, EventEnvelope, LayoutPage, LayoutStatus, ProductId, ProjectStatus, Quote } from '@px/contracts';
 import { sql } from 'drizzle-orm';
-import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -22,11 +22,12 @@ export const projects = pgTable(
     paidAmount: integer('paid_amount').notNull().default(0),
     designMode: text('design_mode').$type<DesignMode>().notNull().default('auto'),
     revisionsUsed: integer('revisions_used').notNull().default(0),
+    deadline: date('deadline', { mode: 'string' }),
     ...timestamps,
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
   },
-  (t) => [index('projects_status_updated_idx').on(t.status, t.updatedAt)],
+  (t) => [index('projects_status_updated_idx').on(t.status, t.updatedAt), index('projects_deadline_idx').on(t.deadline)],
 );
 
 export const contributions = pgTable(
@@ -99,3 +100,17 @@ export const processedEvents = pgTable('processed_events', {
   processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Internal notes of the studio on a project (calls, agreements, reminders). */
+export const projectNotes = pgTable(
+  'project_notes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    text: text('text').notNull(),
+    author: text('author'),
+    ...timestamps,
+  },
+  (t) => [index('project_notes_project_idx').on(t.projectId, t.createdAt)],
+);

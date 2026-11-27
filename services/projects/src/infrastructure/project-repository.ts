@@ -1,4 +1,4 @@
-import type { EventEnvelope, ProjectListItem, ProjectStatus } from '@px/contracts';
+import type { EventEnvelope } from '@px/contracts';
 import type { OutboxStore } from '@px/service-kit';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ContributionRecord, ProjectRepository, ProjectTransaction, StatusChangeRecord } from '../application/ports';
@@ -25,6 +25,7 @@ function toProject(row: ProjectRow): Project {
     paidAmount: row.paidAmount,
     designMode: row.designMode,
     revisionsUsed: row.revisionsUsed,
+    deadline: row.deadline ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     submittedAt: row.submittedAt,
@@ -160,39 +161,6 @@ export class DrizzleProjectRepository implements ProjectRepository {
   async layouts(projectId: string): Promise<Layout[]> {
     const rows = await this.db.select().from(layouts).where(eq(layouts.projectId, projectId)).orderBy(desc(layouts.version));
     return rows.map(toLayout);
-  }
-
-  async list(filter: { status?: ProjectStatus; limit: number }): Promise<ProjectListItem[]> {
-    const contributionsCount = this.db
-      .select({ projectId: contributions.projectId, value: count().as('value') })
-      .from(contributions)
-      .groupBy(contributions.projectId)
-      .as('contribution_counts');
-
-    const rows = await this.db
-      .select({
-        project: projects,
-        contributionsCount: sql<number>`coalesce(${contributionsCount.value}, 0)::int`,
-      })
-      .from(projects)
-      .leftJoin(contributionsCount, eq(contributionsCount.projectId, projects.id))
-      .where(filter.status ? eq(projects.status, filter.status) : undefined)
-      .orderBy(desc(projects.updatedAt))
-      .limit(filter.limit);
-
-    return rows.map(({ project, contributionsCount }) => ({
-      id: project.id,
-      productId: project.productId,
-      subject: project.subject,
-      status: project.status,
-      customerName: project.customer.name,
-      customerPhone: project.customer.phone,
-      total: project.quote.total,
-      paidAmount: project.paidAmount,
-      contributionsCount,
-      createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
-    }));
   }
 
   private async findOne(condition: ReturnType<typeof eq>) {

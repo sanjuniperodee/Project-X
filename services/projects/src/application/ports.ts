@@ -1,12 +1,15 @@
 import type {
+  AdminProjectPage,
+  AdminProjectQuery,
+  AdminStats,
+  CustomerPage,
+  ProjectNote,
   Answers,
   CreatePaymentRequest,
   EventEnvelope,
   PaymentView,
   Product,
   ProductId,
-  ProjectListItem,
-  ProjectStatus,
 } from '@px/contracts';
 import type { Layout } from '../domain/layout';
 import type { Project, StatusChange } from '../domain/project';
@@ -52,7 +55,15 @@ export interface ProjectRepository {
   history(projectId: string): Promise<StatusChangeRecord[]>;
   /** Layout versions, newest first. */
   layouts(projectId: string): Promise<Layout[]>;
-  list(filter: { status?: ProjectStatus; limit: number }): Promise<ProjectListItem[]>;
+}
+
+/** Read models of the studio back office (lists, dashboard, customers, notes). */
+export interface BackOfficeQueries {
+  projects(query: AdminProjectQuery): Promise<AdminProjectPage>;
+  stats(): Promise<AdminStats>;
+  customers(query: { q?: string; limit: number; offset: number }): Promise<CustomerPage>;
+  notes(projectId: string): Promise<ProjectNote[]>;
+  addNote(projectId: string, note: { text: string; author: string | null }): Promise<void>;
 }
 
 export interface CatalogGateway {

@@ -6,6 +6,7 @@ import { ProjectRuleViolation } from './domain/project';
 import { subscribeToEvents } from './events/subscriptions';
 import { registerAdminRoutes, registerInternalRoutes, registerInviteRoutes, registerOwnerRoutes } from './http/routes';
 import type { Database } from './infrastructure/db/client';
+import { DrizzleBackOfficeQueries } from './infrastructure/back-office-queries';
 import { DrizzleOutboxStore, DrizzleProjectRepository } from './infrastructure/project-repository';
 
 export interface ProjectsAppDeps {
@@ -35,6 +36,7 @@ export async function buildProjectsApp(deps: ProjectsAppDeps) {
 
   const projects = new ProjectService({
     repository: new DrizzleProjectRepository(deps.db),
+    queries: new DrizzleBackOfficeQueries(deps.db),
     catalog: deps.catalog,
     payments: deps.payments,
     revisionsLimit: deps.layoutRevisionLimit ?? 3,

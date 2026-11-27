@@ -1,4 +1,7 @@
 import {
+  AddNoteRequest,
+  AdminProjectQuery,
+  CustomerQuery,
   ApproveLayoutRequest,
   ChangeStatusRequest,
   CheckoutRequest,
@@ -16,10 +19,6 @@ const EditKeyParams = z.object({ editKey: z.string().min(10).max(64) });
 const StepParams = EditKeyParams.extend({ stepId: z.string().min(1).max(64) });
 const InviteParams = z.object({ inviteKey: z.string().min(10).max(64) });
 const IdParams = z.object({ id: z.uuid() });
-const ListQuery = z.object({
-  status: ProjectStatus.optional(),
-  limit: z.coerce.number().int().positive().max(500).optional(),
-});
 
 /** Customer-facing endpoints. Access is granted by the secret edit key in the URL. */
 export function registerOwnerRoutes(app: FastifyInstance, projects: ProjectService) {
@@ -81,8 +80,17 @@ export function registerInviteRoutes(app: FastifyInstance, projects: ProjectServ
 /** Studio back office. Authorisation is enforced by the gateway; these routes are never exposed directly. */
 export function registerAdminRoutes(app: FastifyInstance, projects: ProjectService) {
   app.get('/admin/projects', async (request) => {
-    const query = parseInput(ListQuery, request.query);
-    return { items: await projects.list(query) };
+    return projects.projects(parseInput(AdminProjectQuery, request.query));
+  });
+
+  app.get('/admin/stats', async () => projects.stats());
+
+  app.get('/admin/customers', async (request) => projects.customers(parseInput(CustomerQuery, request.query)));
+
+  app.post('/admin/projects/:id/notes', async (request) => {
+    const { id } = parseInput(IdParams, request.params);
+    const { text, author } = parseInput(AddNoteRequest, request.body);
+    return projects.addNote(id, { text, author: author || null });
   });
 
   app.get('/admin/projects/:id', async (request) => {

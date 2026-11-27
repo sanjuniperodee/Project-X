@@ -59,6 +59,15 @@ it('creates a checkout, settles it once and publishes payments.succeeded', async
   expect(cancel.statusCode).toBe(409);
 });
 
+it('lists the payments of a project for the studio', async () => {
+  const res = await app.service.app.inject({ method: 'GET', url: '/admin/payments?projectId=p-1' });
+  expect(res.statusCode).toBe(200);
+  const items = res.json().items;
+  expect(items.length).toBeGreaterThan(0);
+  expect(items.every((p: { projectId: string }) => p.projectId === 'p-1')).toBe(true);
+  expect((await app.service.app.inject({ method: 'GET', url: '/admin/payments?projectId=nobody' })).json().items).toEqual([]);
+});
+
 it('rejects webhooks for unknown providers', async () => {
   const res = await app.service.app.inject({ method: 'POST', url: '/webhooks/kaspi', payload: 'x', headers: { 'content-type': 'text/plain' } });
   expect(res.statusCode).toBe(404);

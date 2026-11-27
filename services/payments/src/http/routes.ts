@@ -26,6 +26,10 @@ export function registerRoutes(app: FastifyInstance, payments: PaymentService, c
   });
 
   // Studio back office (the gateway requires the admin token for /api/admin/*).
+  app.get('/admin/payments', async (request) => {
+    const { projectId } = parseInput(z.object({ projectId: z.string().min(1).max(64) }), request.query);
+    return { items: await payments.listByProject(projectId) };
+  });
   app.get('/admin/payments/kaspi', async () => cashier.status());
   app.post('/admin/payments/kaspi/code', async (request) => {
     const { phone } = parseInput(KaspiCodeRequest, request.body);

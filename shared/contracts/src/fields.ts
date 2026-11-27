@@ -39,6 +39,11 @@ export const TextareaField = FieldBase.extend({
 
 export const DateField = FieldBase.extend({
   type: z.literal('date'),
+  /**
+   * `eventDate`: the date the gift is for (birthday, wedding…). The studio plans production
+   * around it: it becomes the project's deadline in the back office.
+   */
+  role: z.enum(['eventDate']).optional(),
 });
 
 export const SelectField = FieldBase.extend({

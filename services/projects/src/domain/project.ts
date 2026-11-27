@@ -4,6 +4,7 @@ import {
   PAYMENT_DRIVEN_STATUSES,
   PROJECT_STATUS_LABELS,
   type Answers,
+  type Product,
   type Customer,
   type DesignMode,
   type Draft,
@@ -34,6 +35,8 @@ export interface Project {
   designMode: DesignMode;
   /** Automatic revision rounds used. */
   revisionsUsed: number;
+  /** Gift date from the questionnaire (ISO date): the production deadline. */
+  deadline: string | null;
   createdAt: Date;
   updatedAt: Date;
   submittedAt: Date | null;
@@ -138,4 +141,20 @@ export function applyPayment(project: Project, kind: PaymentKind, amount: number
 export function attachDraft(project: Project, draft: Draft): void {
   project.draft = draft;
   project.updatedAt = new Date();
+}
+
+/**
+ * The gift date the customer entered: the answer to the date field the catalog marks
+ * with `role: 'eventDate'`. Null when the product has no such field or it is empty.
+ */
+export function deadlineFrom(product: Product, answers: Answers): string | null {
+  for (const step of product.steps) {
+    if (step.audience !== 'owner') continue;
+    for (const field of step.fields) {
+      if (field.type !== 'date' || field.role !== 'eventDate') continue;
+      const value = answers[step.id]?.[field.id];
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    }
+  }
+  return null;
 }

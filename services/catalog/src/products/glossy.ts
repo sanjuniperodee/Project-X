@@ -79,7 +79,7 @@ export const glossy: ProductInput = {
             { value: 'just-because', label: 'Без повода' },
           ],
         },
-        { id: 'eventDate', type: 'date', label: 'Дата праздника', hint: 'Под неё мы планируем печать.' },
+        { id: 'eventDate', type: 'date', label: 'Дата праздника', hint: 'Под неё мы планируем печать.', role: 'eventDate' },
         { id: 'birthday', type: 'date', label: 'День рождения героя', hint: 'Для досье и гороскопа номера. Можно пропустить.' },
         { id: 'profession', type: 'text', label: 'Чем занимается', placeholder: 'Основательница кофейни «Дәм»', maxLength: 120 },
         { id: 'city', type: 'text', label: 'Город', placeholder: 'Алматы', maxLength: 80 },

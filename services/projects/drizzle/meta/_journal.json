@@ -15,6 +15,13 @@
       "when": 1795815651429,
       "tag": "0001_layouts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795821638776,
+      "tag": "0002_crm",
+      "breakpoints": true
     }
   ]
 }
