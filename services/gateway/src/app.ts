@@ -29,6 +29,18 @@ export async function buildGateway(config: GatewayConfig) {
     allowList: (request) => request.url === '/health' || request.url === '/ready',
   });
 
+  // Service-to-service endpoints (`/internal/*`, e.g. media's storage of generated layouts) are never public,
+  // whatever prefix they hide behind. Checked on the decoded path: "%69nternal" is "internal" upstream.
+  app.addHook('onRequest', async (request) => {
+    let path = request.url.split('?')[0] ?? '';
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      throw AppError.notFound('Маршрут');
+    }
+    if (/(^|\/)internal(\/|$)/i.test(path)) throw AppError.notFound('Маршрут');
+  });
+
   const adminToken = Buffer.from(config.ADMIN_TOKEN);
   const isAdmin = (header: string | undefined) => {
     const token = Buffer.from(header?.replace(/^Bearer\s+/i, '') ?? '');

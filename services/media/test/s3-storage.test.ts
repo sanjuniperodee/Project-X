@@ -48,3 +48,23 @@ describe('S3Storage', () => {
     await expect(storage.get('../etc.passwd')).rejects.toThrow(/Unsafe/);
   });
 });
+
+describe('S3Storage large files', () => {
+  it('streams files of known size with an unsigned payload', async () => {
+    const seen: { headers: Record<string, string>; streamed: boolean }[] = [];
+    const storage = new S3Storage({
+      endpoint: 'https://object.example.test',
+      region: 'us-east-1',
+      bucket: 'b',
+      prefix: 'px/',
+      accessKeyId: 'AK',
+      secretAccessKey: 's',
+      fetchImpl: async (_input, init) => {
+        seen.push({ headers: init!.headers as Record<string, string>, streamed: !Buffer.isBuffer(init!.body) });
+        return new Response(null, { status: 200 });
+      },
+    });
+    expect(await storage.put('layout_x.pdf', Readable.from([Buffer.from('%PDF-')]), { size: 5 })).toBe(5);
+    expect(seen[0]).toMatchObject({ streamed: true, headers: { 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD', 'content-length': '5' } });
+  });
+});

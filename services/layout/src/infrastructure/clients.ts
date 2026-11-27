@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs';
-import { open } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import { LayoutSource, Product, UploadResponse, type ProductId } from '@px/contracts';
 import { AppError, ServiceClient } from '@px/service-kit';
@@ -61,9 +61,11 @@ export class HttpMediaGateway implements MediaGateway {
   }
 
   async put(key: string, body: Buffer | { file: string }, contentType: string): Promise<string> {
+    const size = Buffer.isBuffer(body) ? body.length : (await stat(body.file)).size;
     const response = await this.fetch(`/internal/files/${encodeURIComponent(key)}`, {
       method: 'PUT',
-      headers: { 'content-type': contentType },
+      // Media streams the body straight to storage and needs the size up front.
+      headers: { 'content-type': contentType, 'content-length': String(size) },
       body: Buffer.isBuffer(body) ? body : createReadStream(body.file),
       duplex: 'half',
     } as RequestInit);

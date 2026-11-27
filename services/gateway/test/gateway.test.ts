@@ -64,3 +64,11 @@ it('never exposes internal endpoints', async () => {
   expect((await gateway.app.inject({ method: 'POST', url: '/internal/payments' })).statusCode).toBe(404);
   expect((await gateway.app.inject({ method: 'POST', url: '/api/internal/payments' })).statusCode).toBe(404);
 });
+
+it.each(['/api/media/internal/files/x.pdf', '/api/media/%69nternal/files/x.pdf', '/api/projects/../internal/projects/1/layout-source', '/api/media/INTERNAL/files/x.svg'])(
+  'never exposes internal endpoints: %s',
+  async (url) => {
+    const res = await gateway.app.inject({ method: 'PUT', url, payload: '%PDF-' });
+    expect(res.statusCode).toBe(404);
+  },
+);

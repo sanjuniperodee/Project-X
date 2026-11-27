@@ -1,6 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
 import { Readable } from 'node:stream';
-import type { Storage, StoredObject } from './storage';
+import type { PutOptions, Storage, StoredObject } from './storage';
 
 export interface S3Options {
   /** e.g. https://object.pscloud.io (path-style addressing). */
@@ -35,8 +35,14 @@ export class S3Storage implements Storage {
     this.fetch = options.fetchImpl ?? ((...args) => fetch(...args));
   }
 
-  async put(key: string, data: Readable): Promise<number> {
-    // Uploads are capped (MAX_UPLOAD_BYTES), and S3 needs the length up front: buffer the file.
+  async put(key: string, data: Readable, options: PutOptions = {}): Promise<number> {
+    if (options.size !== undefined) {
+      // Generated layouts can be hundreds of MB: stream them, signing the headers only (UNSIGNED-PAYLOAD; TLS protects the body).
+      const res = await this.request('PUT', this.objectPath(key), data, { 'content-length': String(options.size) }, {}, 'UNSIGNED-PAYLOAD');
+      if (!res.ok) await this.fail(res, `put ${key}`);
+      return options.size;
+    }
+    // Photo uploads are capped (MAX_UPLOAD_BYTES) and their length is unknown up front: buffer the file.
     const chunks: Buffer[] = [];
     for await (const chunk of data) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
     const body = Buffer.concat(chunks);
@@ -69,9 +75,16 @@ export class S3Storage implements Storage {
     return `/${enc(this.options.bucket)}/${encPath(`${this.options.prefix}uploads/${key}`)}`;
   }
 
-  private async request(method: string, pathname: string, body?: Buffer, extra: Record<string, string> = {}, query: Record<string, string> = {}) {
+  private async request(
+    method: string,
+    pathname: string,
+    body?: Buffer | Readable,
+    extra: Record<string, string> = {},
+    query: Record<string, string> = {},
+    unsignedPayload?: 'UNSIGNED-PAYLOAD',
+  ) {
     const { accessKeyId, secretAccessKey, region } = this.options;
-    const payloadHash = sha256(body ?? '');
+    const payloadHash = unsignedPayload ?? sha256(Buffer.isBuffer(body) ? body : '');
     const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const day = amzDate.slice(0, 8);
     const headers: Record<string, string> = { host: this.base.host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': amzDate, ...extra };
@@ -88,12 +101,14 @@ export class S3Storage implements Storage {
     const signature = createHmac('sha256', signingKey).update(toSign).digest('hex');
     headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${names.join(';')}, Signature=${signature}`;
     delete headers.host;
+    const streaming = body !== undefined && !Buffer.isBuffer(body);
     return this.fetch(`${this.base.origin}${pathname}${qs ? `?${qs}` : ''}`, {
       method,
       headers,
-      body,
-      signal: AbortSignal.timeout(30_000),
-    });
+      body: body as RequestInit['body'],
+      ...(streaming ? { duplex: 'half' } : {}),
+      signal: AbortSignal.timeout(streaming ? 15 * 60_000 : 30_000),
+    } as RequestInit);
   }
 
   private async fail(res: Response, what: string): Promise<never> {

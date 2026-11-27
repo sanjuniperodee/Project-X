@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildMediaApp } from '../src/app';
 import { LocalDiskStorage } from '../src/storage/local-disk';
 
@@ -59,4 +59,32 @@ it('rejects files that are not images whatever their declared type', async () =>
 it('refuses path traversal', async () => {
   const res = await service.app.inject({ method: 'GET', url: '/files/..%2F..%2Fetc%2Fpasswd' });
   expect(res.statusCode).toBe(422);
+});
+
+describe('generated files', () => {
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>');
+  const put = (url: string, body: Buffer, type: string) =>
+    service.app.inject({ method: 'PUT', url, payload: body, headers: { 'content-type': type, 'content-length': String(body.length) } });
+
+  it('stores layout PDFs and previews through the internal route and serves them safely', async () => {
+    const pdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(200_000, 7)]);
+    const stored = await put('/internal/files/layout_abc_v1.pdf', pdf, 'application/pdf');
+    expect(stored.statusCode).toBe(201);
+    expect(stored.json()).toEqual({ id: 'layout_abc_v1', url: '/api/media/files/layout_abc_v1.pdf', contentType: 'application/pdf', size: pdf.length });
+    const file = await service.app.inject({ method: 'GET', url: '/files/layout_abc_v1.pdf' });
+    expect(file.headers['content-type']).toBe('application/pdf');
+    expect(file.rawPayload.equals(pdf)).toBe(true);
+
+    expect((await put('/internal/files/layout_abc_v1_p001.svg', svg, 'image/svg+xml')).statusCode).toBe(201);
+    const preview = await service.app.inject({ method: 'GET', url: '/files/layout_abc_v1_p001.svg' });
+    expect(preview.headers['content-type']).toBe('image/svg+xml');
+    expect(preview.headers['content-security-policy']).toContain('sandbox');
+  });
+
+  it('checks the content of generated files and never accepts them as uploads', async () => {
+    expect((await put('/internal/files/x.pdf', Buffer.from('<html>nope</html>'), 'application/pdf')).statusCode).toBe(422);
+    expect((await put('/internal/files/x.exe', Buffer.from('MZ'), 'application/octet-stream')).statusCode).toBe(422);
+    const upload = await service.app.inject({ method: 'POST', url: '/uploads', ...multipart('x.svg', 'image/svg+xml', svg) });
+    expect(upload.statusCode).toBe(422);
+  });
 });
