@@ -1,4 +1,5 @@
 import jpeg from 'jpeg-js';
+import { hslToHex, vividColor } from '../domain/color';
 import PNG from 'png-js';
 import { decodeJpegDc } from './jpeg-dc';
 
@@ -211,4 +212,15 @@ function flattenAlpha(data: Uint8Array): Uint8Array {
     data[i + 3] = 255;
   }
   return data;
+}
+
+/** Vivid colour of a small JPEG (a cached thumbnail), for the issue's accent. */
+export function vividColorOf(data: Uint8Array): string | undefined {
+  try {
+    const decoded = jpeg.decode(data, { useTArray: true, formatAsRGBA: true, maxResolutionInMP: 2 });
+    const color = vividColor(decoded.data);
+    return color ? hslToHex(color) : undefined;
+  } catch {
+    return undefined;
+  }
 }

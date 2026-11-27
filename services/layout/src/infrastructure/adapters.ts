@@ -1,10 +1,10 @@
 import type { ImageProcessor, Renderer } from '../application/ports';
 import type { FontLibrary } from './fonts';
-import { probe, thumbnail } from './images';
+import { probe, thumbnail, vividColorOf } from './images';
 import { renderPdf } from './pdf-renderer';
 import { renderSvg } from './svg-renderer';
 
-export const imageProcessor: ImageProcessor = { probe, thumbnail };
+export const imageProcessor: ImageProcessor = { probe, thumbnail, vividColor: vividColorOf };
 
 export function createRenderer(fonts: FontLibrary): Renderer {
   return {

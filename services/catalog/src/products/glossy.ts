@@ -86,12 +86,14 @@ export const glossy: ProductInput = {
         {
           id: 'tone',
           type: 'choice',
-          label: 'Настроение номера',
+          label: 'Стиль номера',
+          hint: 'От него зависит всё оформление: шрифты, цвета, обложка и голос текстов.',
           required: true,
           options: [
-            { value: 'vogue', label: 'Как Vogue', description: 'Сдержанно, дорого, крупные портреты' },
-            { value: 'tabloid', label: 'Как таблоид', description: 'Громкие заголовки, сплетни, ирония' },
-            { value: 'tender', label: 'Нежно', description: 'Тёплые слова, много воспоминаний' },
+            { value: 'vogue', label: 'Глянец', description: 'Чёрно-белая классика, крупные портреты, цвет номера — из фото обложки' },
+            { value: 'tabloid', label: 'Таблоид', description: 'Красный, жёлтый, громкие заголовки и «сенсации» — для тех, кто любит посмеяться' },
+            { value: 'tender', label: 'Нежность', description: 'Пудровые тона, курсив, много воздуха и круглые портреты' },
+            { value: 'noir', label: 'Нуар', description: 'Чёрные страницы, золото и кино — для юбилеев и мужчин' },
           ],
         },
       ],

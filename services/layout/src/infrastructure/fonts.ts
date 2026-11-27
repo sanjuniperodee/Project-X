@@ -20,6 +20,9 @@ export const FONT_FILES: Record<FontKey, { package: string; file: string; fallba
   'inter-400': { package: 'inter-tight', file: '400Regular/InterTight_400Regular.ttf' },
   'inter-600': { package: 'inter-tight', file: '600SemiBold/InterTight_600SemiBold.ttf' },
   'inter-700': { package: 'inter-tight', file: '700Bold/InterTight_700Bold.ttf' },
+  'cormorant-300-italic': { package: 'cormorant-garamond', file: '300Light_Italic/CormorantGaramond_300Light_Italic.ttf' },
+  'cormorant-400': { package: 'cormorant-garamond', file: '400Regular/CormorantGaramond_400Regular.ttf' },
+  'cormorant-600-italic': { package: 'cormorant-garamond', file: '600SemiBold_Italic/CormorantGaramond_600SemiBold_Italic.ttf' },
   'cormorant-600': { package: 'cormorant-garamond', file: '600SemiBold/CormorantGaramond_600SemiBold.ttf' },
   'cormorant-italic': { package: 'cormorant-garamond', file: '500Medium_Italic/CormorantGaramond_500Medium_Italic.ttf' },
   'literata-400': { package: 'literata', file: '400Regular/Literata_400Regular.ttf' },
@@ -27,6 +30,10 @@ export const FONT_FILES: Record<FontKey, { package: string; file: string; fallba
   'literata-italic': { package: 'literata', file: '400Regular_Italic/Literata_400Regular_Italic.ttf' },
   // Unbounded has no Kazakh letters (ә, ғ, қ, ң, ө, ұ, ү, һ): those glyphs come from Rubik Bold.
   'unbounded-700': { package: 'unbounded', file: '700Bold/Unbounded_700Bold.ttf', fallback: 'rubik-700' },
+  // Tabloid style: Dela Gothic One lacks Kazakh letters, Oswald fills them in.
+  'dela-400': { package: 'dela-gothic-one', file: '400Regular/DelaGothicOne_400Regular.ttf', fallback: 'oswald-700' },
+  'oswald-500': { package: 'oswald', file: '500Medium/Oswald_500Medium.ttf' },
+  'oswald-700': { package: 'oswald', file: '700Bold/Oswald_700Bold.ttf' },
   'rubik-400': { package: 'rubik', file: '400Regular/Rubik_400Regular.ttf' },
   'rubik-600': { package: 'rubik', file: '600SemiBold/Rubik_600SemiBold.ttf' },
   'rubik-700': { package: 'rubik', file: '700Bold/Rubik_700Bold.ttf' },

@@ -36,8 +36,9 @@ export class PhotoStore implements PhotoLibrary {
         skipped[info.type] = (skipped[info.type] ?? 0) + 1;
         continue;
       }
-      this.photos.set(key, { key, width: info.width, height: info.height, file });
       const thumbnail = await this.thumbnail(key, data);
+      const vivid = thumbnail ? this.deps.images.vividColor(thumbnail) : undefined;
+      this.photos.set(key, { key, width: info.width, height: info.height, file, ...(vivid ? { vivid } : {}) });
       if (thumbnail) this.thumbnails.set(key, thumbnail);
     }
     const labels: Record<string, string> = { heic: 'HEIC', webp: 'WebP', unknown: 'неизвестного формата', missing: 'не найдено в хранилище' };
@@ -53,7 +54,7 @@ export class PhotoStore implements PhotoLibrary {
   get(ref: MediaRef): PhotoRef | undefined {
     const key = mediaKey(ref);
     const photo = key ? this.photos.get(key) : undefined;
-    return photo ? { key: photo.key, width: photo.width, height: photo.height } : undefined;
+    return photo ? { key: photo.key, width: photo.width, height: photo.height, ...(photo.vivid ? { vivid: photo.vivid } : {}) } : undefined;
   }
 
   file(key: string): string | undefined {

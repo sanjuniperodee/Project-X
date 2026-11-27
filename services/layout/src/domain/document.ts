@@ -78,6 +78,8 @@ export interface PhotoRef {
   /** Oriented pixel size. */
   width: number;
   height: number;
+  /** Most characteristic vivid colour of the photo (hex), when it has one. */
+  vivid?: string;
 }
 
 export interface ImageElement {

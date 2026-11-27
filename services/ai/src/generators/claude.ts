@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { DraftContent } from '@px/contracts';
+import { DraftContent, MAGAZINE_RUBRICS } from '@px/contracts';
 import { describeProject } from '../prompts/describe';
 import { PRODUCT_INSTRUCTIONS, revisionBrief, SYSTEM_PROMPT } from '../prompts/instructions';
 import type { DraftGenerator, DraftRequest } from './generator';
@@ -8,7 +8,7 @@ import type { DraftGenerator, DraftRequest } from './generator';
 const DRAFT_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['title', 'lead', 'sections', 'cards'],
+  required: ['title', 'lead', 'sections', 'cards', 'art'],
   properties: {
     title: { type: 'string' },
     lead: { type: 'string' },
@@ -28,6 +28,25 @@ const DRAFT_JSON_SCHEMA = {
         additionalProperties: false,
         required: ['title', 'text'],
         properties: { title: { type: 'string' }, text: { type: 'string' } },
+      },
+    },
+    // Art direction: used by Cover Me; other products leave it empty.
+    art: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['rubrics', 'tagline', 'horoscope'],
+      properties: {
+        rubrics: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['rubric', 'title', 'deck'],
+            properties: { rubric: { type: 'string', enum: [...MAGAZINE_RUBRICS] }, title: { type: 'string' }, deck: { type: 'string' } },
+          },
+        },
+        tagline: { type: 'string' },
+        horoscope: { type: 'string' },
       },
     },
   },
@@ -52,7 +71,8 @@ export class ClaudeDraftGenerator implements DraftGenerator {
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       output_config: {
-        effort: 'medium',
+        // The magazine is mostly writing with a voice: worth a deeper pass.
+        effort: request.product.id === 'glossy' ? 'high' : 'medium',
         format: { type: 'json_schema', schema: DRAFT_JSON_SCHEMA },
       },
       system: SYSTEM_PROMPT,

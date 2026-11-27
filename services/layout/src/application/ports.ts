@@ -28,6 +28,8 @@ export interface ProbedImage {
 export interface ImageProcessor {
   probe(data: Uint8Array): ProbedImage;
   thumbnail(data: Uint8Array, maxSide: number): Promise<{ data: Buffer }>;
+  /** Most characteristic vivid colour of a (thumbnail) JPEG, hex; undefined for muted photos. */
+  vividColor(jpeg: Uint8Array): string | undefined;
 }
 
 export interface Renderer {
