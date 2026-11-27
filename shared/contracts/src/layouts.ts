@@ -78,7 +78,8 @@ export const ApproveLayoutRequest = z.object({
 export type ApproveLayoutRequest = z.infer<typeof ApproveLayoutRequest>;
 
 export const RequestLayoutChangesRequest = z.object({
-  version: z.number().int().positive(),
+  /** Required while an automatic layout waits for a decision; absent when the studio made the layout. */
+  version: z.number().int().positive().optional(),
   comment: z
     .string()
     .trim()

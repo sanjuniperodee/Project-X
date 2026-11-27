@@ -5,6 +5,7 @@ import {
   PROJECT_STATUS_LABELS,
   type Answers,
   type Customer,
+  type DesignMode,
   type Draft,
   type PaymentKind,
   type ProductId,
@@ -29,6 +30,10 @@ export interface Project {
   editKey: string;
   inviteKey: string;
   paidAmount: number;
+  /** Who designs the layout: the automatic pipeline or a person in the studio. */
+  designMode: DesignMode;
+  /** Automatic revision rounds used. */
+  revisionsUsed: number;
   createdAt: Date;
   updatedAt: Date;
   submittedAt: Date | null;
@@ -40,7 +45,13 @@ export interface StatusChange {
   note: string | null;
 }
 
-export type ProjectRuleCode = 'not_editable' | 'invalid_transition' | 'nothing_to_pay' | 'not_accepting_contributions';
+export type ProjectRuleCode =
+  | 'not_editable'
+  | 'invalid_transition'
+  | 'nothing_to_pay'
+  | 'not_accepting_contributions'
+  | 'no_layout_to_decide'
+  | 'stale_layout';
 
 /** A business rule was violated by an otherwise well-formed request. */
 export class ProjectRuleViolation extends Error {

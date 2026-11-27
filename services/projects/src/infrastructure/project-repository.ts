@@ -2,9 +2,10 @@ import type { EventEnvelope, ProjectListItem, ProjectStatus } from '@px/contract
 import type { OutboxStore } from '@px/service-kit';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ContributionRecord, ProjectRepository, ProjectTransaction, StatusChangeRecord } from '../application/ports';
+import type { Layout } from '../domain/layout';
 import type { Project, StatusChange } from '../domain/project';
 import type { Database } from './db/client';
-import { contributions, outbox, processedEvents, projects, statusChanges } from './db/schema';
+import { contributions, layouts, outbox, processedEvents, projects, statusChanges } from './db/schema';
 
 type Executor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
 type ProjectRow = typeof projects.$inferSelect;
@@ -22,9 +23,26 @@ function toProject(row: ProjectRow): Project {
     editKey: row.editKey,
     inviteKey: row.inviteKey,
     paidAmount: row.paidAmount,
+    designMode: row.designMode,
+    revisionsUsed: row.revisionsUsed,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     submittedAt: row.submittedAt,
+  };
+}
+
+function toLayout(row: typeof layouts.$inferSelect): Layout {
+  return {
+    projectId: row.projectId,
+    version: row.version,
+    status: row.status,
+    pdfUrl: row.pdfUrl,
+    pages: row.pages,
+    template: row.template,
+    warnings: row.warnings,
+    feedback: row.feedback,
+    createdAt: row.createdAt,
+    decidedAt: row.decidedAt,
   };
 }
 
@@ -61,6 +79,29 @@ class DrizzleProjectTransaction implements ProjectTransaction {
 
   async enqueue(envelope: EventEnvelope): Promise<void> {
     await this.tx.insert(outbox).values({ id: envelope.id, type: envelope.type, envelope });
+  }
+
+  async latestLayout(projectId: string): Promise<Layout | null> {
+    const [row] = await this.tx
+      .select()
+      .from(layouts)
+      .where(eq(layouts.projectId, projectId))
+      .orderBy(desc(layouts.version))
+      .limit(1)
+      .for('update');
+    return row ? toLayout(row) : null;
+  }
+
+  async insertLayout(layout: Layout): Promise<boolean> {
+    const inserted = await this.tx.insert(layouts).values(layout).onConflictDoNothing().returning({ id: layouts.id });
+    return inserted.length > 0;
+  }
+
+  async updateLayout(layout: Layout): Promise<void> {
+    await this.tx
+      .update(layouts)
+      .set({ status: layout.status, feedback: layout.feedback, decidedAt: layout.decidedAt })
+      .where(and(eq(layouts.projectId, layout.projectId), eq(layouts.version, layout.version)));
   }
 
   async markProcessed(eventId: string): Promise<boolean> {
@@ -114,6 +155,11 @@ export class DrizzleProjectRepository implements ProjectRepository {
       .from(statusChanges)
       .where(eq(statusChanges.projectId, projectId))
       .orderBy(asc(statusChanges.createdAt));
+  }
+
+  async layouts(projectId: string): Promise<Layout[]> {
+    const rows = await this.db.select().from(layouts).where(eq(layouts.projectId, projectId)).orderBy(desc(layouts.version));
+    return rows.map(toLayout);
   }
 
   async list(filter: { status?: ProjectStatus; limit: number }): Promise<ProjectListItem[]> {

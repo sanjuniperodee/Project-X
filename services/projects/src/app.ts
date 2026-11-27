@@ -4,7 +4,7 @@ import { ProjectService } from './application/project-service';
 import type { CatalogGateway, PaymentsGateway } from './application/ports';
 import { ProjectRuleViolation } from './domain/project';
 import { subscribeToEvents } from './events/subscriptions';
-import { registerAdminRoutes, registerInviteRoutes, registerOwnerRoutes } from './http/routes';
+import { registerAdminRoutes, registerInternalRoutes, registerInviteRoutes, registerOwnerRoutes } from './http/routes';
 import type { Database } from './infrastructure/db/client';
 import { DrizzleOutboxStore, DrizzleProjectRepository } from './infrastructure/project-repository';
 
@@ -15,6 +15,8 @@ export interface ProjectsAppDeps {
   catalog: CatalogGateway;
   payments: PaymentsGateway;
   frontendUrl: string;
+  /** Automatic layout revision rounds before a designer takes over (default 3). */
+  layoutRevisionLimit?: number;
   /** Brand sites by product; falls back to `${frontendUrl}/${productId}`. */
   productUrls?: Partial<Record<ProductId, string>>;
   logLevel?: string;
@@ -35,6 +37,7 @@ export async function buildProjectsApp(deps: ProjectsAppDeps) {
     repository: new DrizzleProjectRepository(deps.db),
     catalog: deps.catalog,
     payments: deps.payments,
+    revisionsLimit: deps.layoutRevisionLimit ?? 3,
     workspaceUrl: ({ productId, editKey }) => {
       const base = deps.productUrls?.[productId] ?? new URL(`/${productId}`, deps.frontendUrl).toString();
       return `${base.replace(/\/$/, '')}/p/${editKey}`;
@@ -48,6 +51,7 @@ export async function buildProjectsApp(deps: ProjectsAppDeps) {
   registerOwnerRoutes(service.app, projects);
   registerInviteRoutes(service.app, projects);
   registerAdminRoutes(service.app, projects);
+  registerInternalRoutes(service.app, projects);
   await subscribeToEvents(bus, projects);
 
   const relay = new OutboxRelay({ store: new DrizzleOutboxStore(deps.db), bus, log: service.app.log });

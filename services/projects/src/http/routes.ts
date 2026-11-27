@@ -1,9 +1,11 @@
 import {
+  ApproveLayoutRequest,
   ChangeStatusRequest,
   CheckoutRequest,
   ContributionRequest,
   CreateProjectRequest,
   ProjectStatus,
+  RequestLayoutChangesRequest,
   SaveStepRequest,
   z,
 } from '@px/contracts';
@@ -43,6 +45,18 @@ export function registerOwnerRoutes(app: FastifyInstance, projects: ProjectServi
     return projects.submit(editKey);
   });
 
+  app.post('/projects/:editKey/layout/approve', async (request) => {
+    const { editKey } = parseInput(EditKeyParams, request.params);
+    const { version } = parseInput(ApproveLayoutRequest, request.body);
+    return projects.approveLayout(editKey, version);
+  });
+
+  app.post('/projects/:editKey/layout/changes', async (request) => {
+    const { editKey } = parseInput(EditKeyParams, request.params);
+    const { version, comment } = parseInput(RequestLayoutChangesRequest, request.body);
+    return projects.requestLayoutChanges(editKey, version ?? null, comment);
+  });
+
   app.post('/projects/:editKey/checkout', async (request) => {
     const { editKey } = parseInput(EditKeyParams, request.params);
     const { kind } = parseInput(CheckoutRequest, request.body);
@@ -80,5 +94,13 @@ export function registerAdminRoutes(app: FastifyInstance, projects: ProjectServi
     const { id } = parseInput(IdParams, request.params);
     const { to, note } = parseInput(ChangeStatusRequest, request.body);
     return projects.changeStatus(id, to, note ?? null);
+  });
+}
+
+/** Service-to-service endpoints. The gateway never routes `/internal/*`. */
+export function registerInternalRoutes(app: FastifyInstance, projects: ProjectService) {
+  app.get('/internal/projects/:id/layout-source', async (request) => {
+    const { id } = parseInput(IdParams, request.params);
+    return projects.layoutSource(id);
   });
 }

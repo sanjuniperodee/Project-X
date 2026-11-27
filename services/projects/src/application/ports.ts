@@ -8,6 +8,7 @@ import type {
   ProjectListItem,
   ProjectStatus,
 } from '@px/contracts';
+import type { Layout } from '../domain/layout';
 import type { Project, StatusChange } from '../domain/project';
 
 export interface ContributionRecord {
@@ -34,6 +35,11 @@ export interface ProjectTransaction {
   enqueue(envelope: EventEnvelope): Promise<void>;
   /** Returns false when the incoming event was already handled (idempotency). */
   markProcessed(eventId: string): Promise<boolean>;
+  /** Newest layout version of the project. */
+  latestLayout(projectId: string): Promise<Layout | null>;
+  /** Inserts a layout; returns false when this version already exists. */
+  insertLayout(layout: Layout): Promise<boolean>;
+  updateLayout(layout: Layout): Promise<void>;
 }
 
 export interface ProjectRepository {
@@ -44,6 +50,8 @@ export interface ProjectRepository {
   contributions(projectId: string): Promise<ContributionRecord[]>;
   countContributions(projectId: string): Promise<number>;
   history(projectId: string): Promise<StatusChangeRecord[]>;
+  /** Layout versions, newest first. */
+  layouts(projectId: string): Promise<Layout[]>;
   list(filter: { status?: ProjectStatus; limit: number }): Promise<ProjectListItem[]>;
 }
 
