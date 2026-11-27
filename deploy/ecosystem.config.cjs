@@ -18,7 +18,7 @@ function readEnv(file) {
 }
 const e = readEnv(path.join(ROOT, '.env'));
 
-const PORTS = { frontend: 3070, gateway: 3071, catalog: 3072, projects: 3073, payments: 3074, media: 3075, ai: 3076, sales: 3077 };
+const PORTS = { frontend: 3070, gateway: 3071, catalog: 3072, projects: 3073, payments: 3074, media: 3075, ai: 3076, sales: 3077, layout: 3078 };
 const NATS_URL = 'nats://127.0.0.1:4232';
 const url = (svc) => `http://127.0.0.1:${PORTS[svc]}`;
 const PG = (db) => `postgres://px:${encodeURIComponent(e.POSTGRES_PASSWORD)}@127.0.0.1:5432/${db}`;
@@ -81,7 +81,11 @@ module.exports = {
       max_memory_restart: '300M',
     },
     service('catalog'),
-    service('projects', { DATABASE_URL: PG('px_projects'), PRODUCT_URLS: e.PRODUCT_URLS || '' }),
+    service('projects', {
+      DATABASE_URL: PG('px_projects'),
+      PRODUCT_URLS: e.PRODUCT_URLS || '',
+      LAYOUT_REVISION_LIMIT: e.LAYOUT_REVISION_LIMIT || '3',
+    }),
     service('payments', {
       DATABASE_URL: PG('px_payments'),
       PAYMENT_PROVIDER: e.PAYMENT_PROVIDER || 'mock',
@@ -109,6 +113,15 @@ module.exports = {
       ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY || '',
       AI_MODEL: e.AI_MODEL || 'claude-opus-5-5',
     }),
+    // Automatic layout: print PDF + previews from the AI draft (pdfkit, no browser). Peak ~280 MB on a 36-page magazine.
+    {
+      ...service('layout', {
+        PROJECTS_URL: url('projects'),
+        MEDIA_URL: url('media'),
+        LAYOUT_TMP_DIR: path.join(ROOT, 'tmp', 'layout'),
+      }),
+      max_memory_restart: '400M',
+    },
     service('sales', {
       DATABASE_URL: PG('px_sales'),
       PROJECTS_URL: url('projects'),

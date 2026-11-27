@@ -23,7 +23,7 @@ elsewhere and only unpacked.
 |---|---|
 | px-frontend | [::1]:3070 (Next with `HOSTNAME=localhost`, needed for brand-domain rewrites) |
 | px-gateway | 127.0.0.1:3071 |
-| px-catalog / px-projects / px-payments / px-media / px-ai / px-sales | 127.0.0.1:3072…3077 |
+| px-catalog / px-projects / px-payments / px-media / px-ai / px-sales / px-layout | 127.0.0.1:3072…3078 |
 | px-kaspi-pos / px-gowa | 127.0.0.1:3082 / 3083 (`deploy/sidecars.sh`) |
 | px-nats | 127.0.0.1:4232, monitoring 127.0.0.1:8232 |
 

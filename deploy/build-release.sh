@@ -8,7 +8,7 @@ ROOT=$PWD
 SHA=$(git rev-parse --short HEAD)
 OUT=$ROOT/dist/release
 STAGE=$OUT/px-$SHA
-SERVICES=(catalog gateway projects payments media ai sales)
+SERVICES=(catalog gateway projects payments media ai sales layout)
 
 rm -rf "$STAGE" && mkdir -p "$STAGE/services"
 

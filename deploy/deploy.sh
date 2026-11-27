@@ -5,7 +5,7 @@ set -euo pipefail
 ARCHIVE=${1:?usage: deploy.sh <release.tar.gz>}
 ROOT=$HOME/px
 RELEASES=$ROOT/releases
-mkdir -p "$RELEASES" "$ROOT/media" "$ROOT/nats/data" "$ROOT/logs"
+mkdir -p "$RELEASES" "$ROOT/media" "$ROOT/nats/data" "$ROOT/logs" "$ROOT/tmp/layout"
 [ -f "$ROOT/.env" ] || { echo "missing $ROOT/.env"; exit 1; }
 [ -x "$ROOT/nats/nats-server" ] || { echo "missing $ROOT/nats/nats-server (see deploy/README.md)"; exit 1; }
 
@@ -28,7 +28,7 @@ healthy() {
   local ok=0
   for i in $(seq 1 30); do
     ok=1
-    for port in 3071 3072 3073 3074 3075 3076 3077; do
+    for port in 3071 3072 3073 3074 3075 3076 3077 3078; do
       # /ready checks the service's dependencies (Postgres, NATS, S3), not just that the process is up.
       curl -fsS "http://127.0.0.1:$port/ready" >/dev/null 2>&1 || { ok=0; break; }
     done
