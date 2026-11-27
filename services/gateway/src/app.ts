@@ -13,6 +13,7 @@ export async function buildGateway(config: GatewayConfig) {
     prettyLogs: config.NODE_ENV === 'development',
     // Uploads are streamed through to the media service.
     bodyLimit: 20 * 1024 * 1024,
+    fastify: { trustProxy: config.TRUST_PROXY },
   });
   const { app } = service;
 

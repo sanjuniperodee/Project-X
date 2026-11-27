@@ -96,6 +96,8 @@ services:
       MEDIA_URL: http://media:4104
       CORS_ORIGINS: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
+      # The frontend proxies browser calls and forwards the client IP.
+      TRUST_PROXY: "true"
     ports: ["8080:8080"]
     depends_on: [catalog, projects, payments, media]
 

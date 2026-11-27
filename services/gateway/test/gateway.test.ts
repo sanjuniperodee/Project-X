@@ -24,6 +24,7 @@ beforeAll(async () => {
     MEDIA_URL: url,
     CORS_ORIGINS: 'http://localhost:3000',
     ADMIN_TOKEN,
+    TRUST_PROXY: false,
     RATE_LIMIT_PER_MINUTE: 1000,
   });
 });

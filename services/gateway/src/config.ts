@@ -1,5 +1,5 @@
 import { z } from '@px/contracts';
-import { loadConfig } from '@px/service-kit';
+import { envBoolean, loadConfig } from '@px/service-kit';
 
 export const config = loadConfig({
   CATALOG_URL: z.url(),
@@ -10,6 +10,8 @@ export const config = loadConfig({
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
   /** Shared secret for studio back-office endpoints. */
   ADMIN_TOKEN: z.string().min(24, 'ADMIN_TOKEN must be at least 24 characters'),
+  /** Trust X-Forwarded-For from the frontend proxy / load balancer in front of the gateway. */
+  TRUST_PROXY: envBoolean.default(false),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
 });
 
