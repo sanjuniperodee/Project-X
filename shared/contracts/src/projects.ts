@@ -44,6 +44,14 @@ export function canTransition(from: ProjectStatus, to: ProjectStatus): boolean {
   return PROJECT_TRANSITIONS[from].includes(to);
 }
 
+/** Statuses reached only through confirmed payments — the studio can never set them by hand. */
+export const PAYMENT_DRIVEN_STATUSES: readonly ProjectStatus[] = ['deposit_paid', 'paid'];
+
+/** Status changes the studio may make manually from the back office. */
+export function manualTransitions(from: ProjectStatus): ProjectStatus[] {
+  return PROJECT_TRANSITIONS[from].filter((to) => !PAYMENT_DRIVEN_STATUSES.includes(to));
+}
+
 /** Customer-facing labels, so every app shows the same wording. */
 export const PROJECT_STATUS_LABELS: Readonly<Record<ProjectStatus, string>> = {
   draft: 'Ждёт предоплату',

@@ -14,6 +14,7 @@ const { service, relay } = await buildProjectsApp({
   catalog: new HttpCatalogGateway(config.CATALOG_URL),
   payments: new HttpPaymentsGateway(config.PAYMENTS_URL),
   frontendUrl: config.FRONTEND_URL,
+  productUrls: config.PRODUCT_URLS,
   logLevel: config.LOG_LEVEL,
   prettyLogs: config.NODE_ENV === 'development',
 });

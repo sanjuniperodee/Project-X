@@ -1,6 +1,7 @@
 import {
   canTransition,
   isEditable,
+  PAYMENT_DRIVEN_STATUSES,
   PROJECT_STATUS_LABELS,
   type Answers,
   type Customer,
@@ -52,9 +53,6 @@ export class ProjectRuleViolation extends Error {
   }
 }
 
-/** Statuses only reachable through payments — the studio cannot set them by hand. */
-const PAYMENT_DRIVEN: ReadonlySet<ProjectStatus> = new Set(['deposit_paid', 'paid']);
-
 export function transition(project: Project, to: ProjectStatus, note: string | null = null): StatusChange {
   if (!canTransition(project.status, to)) {
     throw new ProjectRuleViolation(
@@ -70,7 +68,7 @@ export function transition(project: Project, to: ProjectStatus, note: string | n
 }
 
 export function manualTransition(project: Project, to: ProjectStatus, note: string | null): StatusChange {
-  if (PAYMENT_DRIVEN.has(to)) {
+  if (PAYMENT_DRIVEN_STATUSES.includes(to)) {
     throw new ProjectRuleViolation('invalid_transition', 'Этот статус выставляется автоматически после оплаты');
   }
   return transition(project, to, note);

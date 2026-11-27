@@ -14,6 +14,7 @@ import {
   type InviteView,
   type PaymentKind,
   type Product,
+  type ProductId,
   type ProjectListItem,
   type ProjectStatus,
   type ProjectView,
@@ -38,7 +39,8 @@ export interface ProjectServiceDeps {
   repository: ProjectRepository;
   catalog: CatalogGateway;
   payments: PaymentsGateway;
-  frontendUrl: string;
+  /** Absolute URL of the owner's workspace on the frontend. */
+  workspaceUrl: (project: { productId: ProductId; editKey: string }) => string;
 }
 
 const PAYMENT_TITLES: Record<PaymentKind, string> = { deposit: 'Предоплата', balance: 'Оплата остатка' };
@@ -154,7 +156,7 @@ export class ProjectService {
       kind,
       amount,
       description: `${PAYMENT_TITLES[kind]}: ${product.name} — ${project.subject}`,
-      returnUrl: new URL(`/${project.productId}/p/${project.editKey}?payment=${kind}`, this.deps.frontendUrl).toString(),
+      returnUrl: `${this.deps.workspaceUrl(project)}?payment=${kind}`,
     });
     return { paymentId: payment.id, redirectUrl: payment.redirectUrl };
   }

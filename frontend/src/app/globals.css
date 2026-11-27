@@ -1,0 +1,188 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ * Components use semantic utilities (bg-surface, text-ink, rounded-control…);
+ * every brand re-maps the underlying variables under [data-brand].
+ */
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+  --color-field: var(--c-field);
+  --color-accent: var(--c-accent);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-danger: var(--c-danger);
+  --color-success: var(--c-success);
+
+  --font-display: var(--f-display);
+  --font-body: var(--f-body);
+
+  --radius-control: var(--r-control);
+  --radius-card: var(--r-card);
+}
+
+/* Fixed brand palettes, usable anywhere (hub previews, landings). */
+@theme {
+  --color-glossy-paper: #ffffff;
+  --color-glossy-ink: #000000;
+  --color-glossy-fuchsia: #e4007c;
+  --color-glossy-smoke: #f2f2f2;
+
+  --color-shezhire-indigo: #18213f;
+  --color-shezhire-night: #0f1630;
+  --color-shezhire-gold: #c7a257;
+  --color-shezhire-paper: #f1eadf;
+  --color-shezhire-madder: #9b3b2e;
+
+  --color-game-yellow: #ffd12e;
+  --color-game-tomato: #ff4f2e;
+  --color-game-cobalt: #2f5bff;
+  --color-game-mint: #2fd39a;
+  --color-game-ink: #000000;
+
+  --animate-grow: grow 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Studio hub & back-office: cool, quiet, out of the way. */
+:root {
+  --c-bg: #ecedf0;
+  --c-surface: #ffffff;
+  --c-ink: #16181d;
+  --c-muted: #5d6270;
+  --c-line: #d5d8de;
+  --c-field: #ffffff;
+  --c-accent: #16181d;
+  --c-accent-ink: #ffffff;
+  --c-danger: #c0262d;
+  --c-success: #1f7a4d;
+  --f-display: var(--font-onest);
+  --f-body: var(--font-onest);
+  --r-control: 10px;
+  --r-card: 16px;
+  --btn-shadow: none;
+  --btn-border: transparent;
+  --focus: #2f5bff;
+}
+
+[data-brand='glossy'] {
+  --c-bg: #ffffff;
+  --c-surface: #ffffff;
+  --c-ink: #000000;
+  --c-muted: #6b6b6b;
+  --c-line: #000000;
+  --c-field: #f2f2f2;
+  --c-accent: #e4007c;
+  --c-accent-ink: #ffffff;
+  --f-display: var(--font-playfair);
+  --f-body: var(--font-inter-tight);
+  --r-control: 0px;
+  --r-card: 0px;
+  --focus: #e4007c;
+}
+
+[data-brand='shezhire'] {
+  --c-bg: #f1eadf;
+  --c-surface: #f8f3eb;
+  --c-ink: #1f1c18;
+  --c-muted: #6e6559;
+  --c-line: #d8ccb8;
+  --c-field: #fffdf9;
+  --c-accent: #18213f;
+  --c-accent-ink: #e9d6a6;
+  --f-display: var(--font-cormorant);
+  --f-body: var(--font-literata);
+  --r-control: 4px;
+  --r-card: 6px;
+  --focus: #9b3b2e;
+}
+
+[data-brand='boardgame'] {
+  --c-bg: #ffffff;
+  --c-surface: #ffffff;
+  --c-ink: #000000;
+  --c-muted: #4a4a4a;
+  --c-line: #000000;
+  --c-field: #ffffff;
+  --c-accent: #ffd12e;
+  --c-accent-ink: #000000;
+  --f-display: var(--font-unbounded);
+  --f-body: var(--font-rubik);
+  --r-control: 999px;
+  --r-card: 20px;
+  --btn-shadow: 4px 4px 0 #000;
+  --btn-border: #000;
+  --focus: #2f5bff;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--c-bg);
+    color: var(--c-ink);
+    font-family: var(--f-body), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  [data-brand] {
+    background: var(--c-bg);
+    color: var(--c-ink);
+    font-family: var(--f-body), system-ui, sans-serif;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--c-accent);
+    color: var(--c-accent-ink);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@keyframes grow {
+  from {
+    stroke-dashoffset: var(--len, 400);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

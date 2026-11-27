@@ -1,3 +1,4 @@
+import type { ProductId } from '@px/contracts';
 import { AppError, createService, OutboxRelay, type EventBus, type Logger } from '@px/service-kit';
 import { ProjectService } from './application/project-service';
 import type { CatalogGateway, PaymentsGateway } from './application/ports';
@@ -14,6 +15,8 @@ export interface ProjectsAppDeps {
   catalog: CatalogGateway;
   payments: PaymentsGateway;
   frontendUrl: string;
+  /** Brand sites by product; falls back to `${frontendUrl}/${productId}`. */
+  productUrls?: Partial<Record<ProductId, string>>;
   logLevel?: string;
   prettyLogs?: boolean;
 }
@@ -32,7 +35,10 @@ export async function buildProjectsApp(deps: ProjectsAppDeps) {
     repository: new DrizzleProjectRepository(deps.db),
     catalog: deps.catalog,
     payments: deps.payments,
-    frontendUrl: deps.frontendUrl,
+    workspaceUrl: ({ productId, editKey }) => {
+      const base = deps.productUrls?.[productId] ?? new URL(`/${productId}`, deps.frontendUrl).toString();
+      return `${base.replace(/\/$/, '')}/p/${editKey}`;
+    },
   });
 
   const bus = await deps.connectBus(service.app.log);
