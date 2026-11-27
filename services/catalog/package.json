@@ -1,0 +1,25 @@
+{
+  "name": "@px/catalog-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Product catalog: formats, prices, extras and questionnaires of every Project-X product",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@px/contracts": "file:../../shared/contracts",
+    "@px/service-kit": "file:../../shared/service-kit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2"
+  }
+}

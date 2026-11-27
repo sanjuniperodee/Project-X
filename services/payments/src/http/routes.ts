@@ -1,0 +1,36 @@
+import { CreatePaymentRequest, z } from '@px/contracts';
+import { parseInput, type FastifyInstance } from '@px/service-kit';
+import type { PaymentService } from '../application/payment-service';
+
+const IdParams = z.object({ id: z.uuid() });
+const ProviderParams = z.object({ provider: z.string().min(1).max(32) });
+const ConfirmBody = z.object({ outcome: z.enum(['success', 'fail']) });
+
+export function registerRoutes(app: FastifyInstance, payments: PaymentService) {
+  // Internal API — the gateway never routes /internal/*.
+  app.post('/internal/payments', async (request, reply) => {
+    const body = parseInput(CreatePaymentRequest, request.body);
+    return reply.status(201).send(await payments.create(body));
+  });
+
+  app.get('/payments/:id', async (request) => {
+    const { id } = parseInput(IdParams, request.params);
+    return payments.get(id);
+  });
+
+  app.post('/payments/:id/mock/confirm', async (request) => {
+    const { id } = parseInput(IdParams, request.params);
+    const { outcome } = parseInput(ConfirmBody, request.body);
+    return payments.confirmManually(id, outcome);
+  });
+
+  // Webhooks need the untouched body to verify provider signatures.
+  app.register(async (scope) => {
+    scope.addContentTypeParser('*', { parseAs: 'buffer' }, (_request, body, done) => done(null, body));
+    scope.post('/webhooks/:provider', async (request, reply) => {
+      const { provider } = parseInput(ProviderParams, request.params);
+      await payments.handleWebhook(provider, { headers: request.headers, rawBody: request.body as Buffer });
+      return reply.status(204).send();
+    });
+  });
+}

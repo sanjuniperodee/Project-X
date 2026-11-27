@@ -1,0 +1,28 @@
+{
+  "name": "@px/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API gateway: the only public entry point; routes /api/* to internal services, CORS, rate limiting, admin auth",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.4.3",
+    "@fastify/http-proxy": "^11.7.1",
+    "@fastify/rate-limit": "^11.3.0",
+    "@px/contracts": "file:../../shared/contracts",
+    "@px/service-kit": "file:../../shared/service-kit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2"
+  }
+}

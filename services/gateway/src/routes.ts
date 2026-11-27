@@ -1,0 +1,28 @@
+import type { GatewayConfig } from './config';
+
+export interface Route {
+  /** Public prefix under the gateway. */
+  prefix: string;
+  /** Upstream base URL. */
+  upstream: string;
+  /** Path prefix on the upstream that replaces `prefix`. */
+  rewritePrefix: string;
+  /** Requires the studio admin token. */
+  admin?: boolean;
+}
+
+/**
+ * The public API surface. Anything not listed here (e.g. `/internal/*`
+ * endpoints used between services) is unreachable from the internet.
+ */
+export function routeTable(config: GatewayConfig): Route[] {
+  return [
+    { prefix: '/api/catalog', upstream: config.CATALOG_URL, rewritePrefix: '' },
+    { prefix: '/api/projects', upstream: config.PROJECTS_URL, rewritePrefix: '/projects' },
+    { prefix: '/api/invites', upstream: config.PROJECTS_URL, rewritePrefix: '/invites' },
+    { prefix: '/api/admin/projects', upstream: config.PROJECTS_URL, rewritePrefix: '/admin/projects', admin: true },
+    { prefix: '/api/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/payments' },
+    { prefix: '/api/webhooks/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/webhooks' },
+    { prefix: '/api/media', upstream: config.MEDIA_URL, rewritePrefix: '' },
+  ];
+}
