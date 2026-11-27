@@ -3,7 +3,7 @@ import type { CreatePaymentRequest, PaymentView } from '@px/contracts';
 import { AppError, createEnvelope } from '@px/service-kit';
 import { settle, type Payment } from '../domain/payment';
 import type { PaymentProvider } from '../providers';
-import type { WebhookRequest } from '../providers/provider';
+import type { PaymentOutcome, WebhookRequest } from '../providers/provider';
 import type { PaymentRepository, PaymentTransaction } from './ports';
 
 export class PaymentService {
@@ -14,9 +14,10 @@ export class PaymentService {
 
   /** Internal: called by the projects service, which computes the amount. */
   async create(request: CreatePaymentRequest): Promise<PaymentView> {
+    const { customerPhone, ...stored } = request;
     const payment: Payment = {
       id: randomUUID(),
-      ...request,
+      ...stored,
       status: 'pending',
       provider: this.provider.id,
       externalId: null,
@@ -24,7 +25,7 @@ export class PaymentService {
       createdAt: new Date(),
       paidAt: null,
     };
-    const session = await this.provider.createCheckout(payment);
+    const session = await this.provider.createCheckout(payment, { customerPhone });
     payment.externalId = session.externalId;
     payment.redirectUrl = session.redirectUrl;
 
@@ -49,20 +50,49 @@ export class PaymentService {
     });
   }
 
-  async handleWebhook(providerId: string, request: WebhookRequest): Promise<void> {
+  async handleWebhook(providerId: string, request: WebhookRequest): Promise<{ ignored: boolean }> {
     if (providerId !== this.provider.id) throw AppError.notFound('Платёжный провайдер');
     const result = await this.provider.parseWebhook(request).catch((error: Error) => {
       throw AppError.badRequest(`Некорректный webhook: ${error.message}`);
     });
-    await this.repository.transaction(async (tx) => {
-      const payment = await tx.lock({ provider: this.provider.id, externalId: result.externalId });
-      if (!payment) throw AppError.notFound('Платёж');
-      await this.settle(tx, payment, result.outcome);
+    if (!result) return { ignored: true };
+    // A shared provider account (Kaspi cashier of MyBooks and Project X) notifies about payments of other shops too.
+    const known = await this.repository.findByExternalId(this.provider.id, result.externalId);
+    if (!known) return { ignored: true };
+    // When the provider can be asked directly, the notification only triggers the check.
+    const outcome = this.provider.fetchOutcome ? await this.provider.fetchOutcome(result.externalId) : result.outcome;
+    if (!outcome || outcome === 'pending') return { ignored: false };
+    await this.settleExternal(result.externalId, outcome);
+    return { ignored: false };
+  }
+
+  /**
+   * Re-checks pending payments of the last day with the provider: covers a webhook that never arrived.
+   * Returns how many payments changed status.
+   */
+  async reconcile(now = new Date()): Promise<number> {
+    if (!this.provider.fetchOutcome) return 0;
+    const pending = await this.repository.listPending(this.provider.id, new Date(now.getTime() - 24 * 3600_000));
+    let changed = 0;
+    for (const payment of pending) {
+      if (!payment.externalId) continue;
+      const outcome = await this.provider.fetchOutcome(payment.externalId).catch(() => 'pending' as const);
+      if (outcome === 'pending') continue;
+      if (await this.settleExternal(payment.externalId, outcome)) changed++;
+    }
+    return changed;
+  }
+
+  private settleExternal(externalId: string, outcome: PaymentOutcome): Promise<boolean> {
+    return this.repository.transaction(async (tx) => {
+      const payment = await tx.lock({ provider: this.provider.id, externalId });
+      if (!payment || payment.status !== 'pending') return false;
+      return this.settle(tx, payment, outcome);
     });
   }
 
-  private async settle(tx: PaymentTransaction, payment: Payment, outcome: 'succeeded' | 'failed' | 'cancelled') {
-    if (!settle(payment, outcome)) return;
+  private async settle(tx: PaymentTransaction, payment: Payment, outcome: PaymentOutcome): Promise<boolean> {
+    if (!settle(payment, outcome)) return false;
     await tx.update(payment);
     if (payment.status === 'succeeded') {
       await tx.enqueue(
@@ -74,6 +104,7 @@ export class PaymentService {
         }),
       );
     }
+    return true;
   }
 }
 

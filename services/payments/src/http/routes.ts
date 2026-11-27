@@ -26,11 +26,13 @@ export function registerRoutes(app: FastifyInstance, payments: PaymentService) {
 
   // Webhooks need the untouched body to verify provider signatures.
   app.register(async (scope) => {
+    // Drop the built-in JSON parser too: providers send application/json, and the signature covers the exact bytes.
+    scope.removeAllContentTypeParsers();
     scope.addContentTypeParser('*', { parseAs: 'buffer' }, (_request, body, done) => done(null, body));
     scope.post('/webhooks/:provider', async (request, reply) => {
       const { provider } = parseInput(ProviderParams, request.params);
-      await payments.handleWebhook(provider, { headers: request.headers, rawBody: request.body as Buffer });
-      return reply.status(204).send();
+      const result = await payments.handleWebhook(provider, { headers: request.headers, rawBody: request.body as Buffer });
+      return reply.status(200).send({ ok: true, ignored: result.ignored });
     });
   });
 }

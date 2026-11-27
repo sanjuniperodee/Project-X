@@ -157,6 +157,7 @@ export class ProjectService {
       amount,
       description: `${PAYMENT_TITLES[kind]}: ${product.name} — ${project.subject}`,
       returnUrl: `${this.deps.workspaceUrl(project)}?payment=${kind}`,
+      customerPhone: project.customer.phone,
     });
     return { paymentId: payment.id, redirectUrl: payment.redirectUrl };
   }

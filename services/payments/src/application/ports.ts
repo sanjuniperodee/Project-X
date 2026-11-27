@@ -11,4 +11,7 @@ export interface PaymentTransaction {
 export interface PaymentRepository {
   transaction<T>(work: (tx: PaymentTransaction) => Promise<T>): Promise<T>;
   findById(id: string): Promise<Payment | null>;
+  findByExternalId(provider: string, externalId: string): Promise<Payment | null>;
+  /** Pending payments of the provider created after `since`, oldest first. */
+  listPending(provider: string, since: Date): Promise<Payment[]>;
 }

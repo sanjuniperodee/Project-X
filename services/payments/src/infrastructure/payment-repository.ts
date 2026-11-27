@@ -1,6 +1,6 @@
 import type { EventEnvelope } from '@px/contracts';
 import type { OutboxStore } from '@px/service-kit';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull } from 'drizzle-orm';
 import type { PaymentRepository, PaymentTransaction } from '../application/ports';
 import type { Payment } from '../domain/payment';
 import type { Database } from './db/client';
@@ -44,6 +44,25 @@ export class DrizzlePaymentRepository implements PaymentRepository {
   async findById(id: string) {
     const [row] = await this.db.select().from(payments).where(eq(payments.id, id)).limit(1);
     return (row as Payment | undefined) ?? null;
+  }
+
+  async findByExternalId(provider: string, externalId: string) {
+    const [row] = await this.db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.provider, provider), eq(payments.externalId, externalId)))
+      .limit(1);
+    return (row as Payment | undefined) ?? null;
+  }
+
+  async listPending(provider: string, since: Date) {
+    const rows = await this.db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.provider, provider), eq(payments.status, 'pending'), gte(payments.createdAt, since)))
+      .orderBy(asc(payments.createdAt))
+      .limit(200);
+    return rows as Payment[];
   }
 }
 

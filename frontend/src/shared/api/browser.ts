@@ -38,6 +38,8 @@ export const browserApi = {
   contribute: (inviteKey: string, body: { authorName: string; answers: Answers }) =>
     call(`/invites/${key(inviteKey)}/contributions`, z.object({ id: z.string() }), { method: 'POST', body }),
 
+  payment: (paymentId: string) => call(`/payments/${key(paymentId)}`, PaymentView),
+
   confirmMockPayment: (paymentId: string, outcome: 'success' | 'fail') =>
     call(`/payments/${key(paymentId)}/mock/confirm`, PaymentView, { method: 'POST', body: { outcome } }),
 

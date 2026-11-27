@@ -13,6 +13,8 @@ export const CreatePaymentRequest = z.object({
   description: z.string().min(1).max(200),
   /** Where the customer returns after paying. */
   returnUrl: z.url(),
+  /** Customer phone as entered (digits, optional +). Invoice providers (Kaspi Pay) send the bill to it. */
+  customerPhone: z.string().regex(/^\+?\d{10,15}$/).optional(),
 });
 export type CreatePaymentRequest = z.infer<typeof CreatePaymentRequest>;
 

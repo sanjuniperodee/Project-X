@@ -43,7 +43,8 @@ export class ServiceClient {
 
     if (!response.ok) {
       const parsed = ErrorResponse.safeParse(payload);
-      if (parsed.success && response.status < 500) {
+      // Expected failures pass through with their message; a deliberate 503 ("Kaspi is down") too, a 500 never.
+      if (parsed.success && (response.status < 500 || parsed.data.error.code === 'unavailable')) {
         const { code, message, fields } = parsed.data.error;
         throw new AppError(code, message, fields);
       }
