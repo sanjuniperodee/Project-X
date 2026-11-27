@@ -98,6 +98,8 @@ export interface RectElement {
   stroke?: { color: string; width: number; dash?: number[] };
   radius?: number;
   opacity?: number;
+  /** Vertical gradient fill (top → bottom) instead of `fill`: stops as [offset 0…1, opacity 0…1]. */
+  gradient?: { color: string; stops: Array<[number, number]> };
 }
 
 export interface LineElement {

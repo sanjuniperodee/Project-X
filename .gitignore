@@ -8,3 +8,6 @@ dist/
 coverage/
 *.tsbuildinfo
 next-env.d.ts
+
+# Local scratch scripts
+*.local.ts

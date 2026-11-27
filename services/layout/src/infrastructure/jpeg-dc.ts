@@ -233,25 +233,30 @@ export function decodeJpegDc(data: Uint8Array): Raster {
   for (let y = 0; y < outH; y++) {
     for (let x = 0; x < outW; x++) {
       const o = (y * outW + x) * 4;
+      // Values are clamped: a Uint8Array wraps 260 to 4, which turned saturated colours into speckles.
       if (components.length === 1) {
-        const g = sample(components[0]!, x, y);
+        const g = clampByte(sample(components[0]!, x, y));
         out[o] = out[o + 1] = out[o + 2] = g;
       } else if (rgb) {
-        out[o] = sample(components[0]!, x, y);
-        out[o + 1] = sample(components[1]!, x, y);
-        out[o + 2] = sample(components[2]!, x, y);
+        out[o] = clampByte(sample(components[0]!, x, y));
+        out[o + 1] = clampByte(sample(components[1]!, x, y));
+        out[o + 2] = clampByte(sample(components[2]!, x, y));
       } else {
         const Y = sample(components[0]!, x, y);
         const cb = sample(components[1]!, x, y) - 128;
         const cr = sample(components[2]!, x, y) - 128;
-        out[o] = Y + 1.402 * cr;
-        out[o + 1] = Y - 0.344136 * cb - 0.714136 * cr;
-        out[o + 2] = Y + 1.772 * cb;
+        out[o] = clampByte(Y + 1.402 * cr);
+        out[o + 1] = clampByte(Y - 0.344136 * cb - 0.714136 * cr);
+        out[o + 2] = clampByte(Y + 1.772 * cb);
       }
       out[o + 3] = 255;
     }
   }
   return { width: outW, height: outH, data: out };
+}
+
+function clampByte(value: number): number {
+  return value <= 0 ? 0 : value >= 255 ? 255 : Math.round(value);
 }
 
 function decodeScan(

@@ -56,8 +56,13 @@ describe('Cover Me', () => {
         expect(e.box.y + e.box.h).toBeLessThanOrEqual(page.size.h + BLEED + 0.01);
       }
     }
-    // The back cover may repeat the cover portrait; nothing else repeats.
-    const keys = images.slice(0, -1).map((i) => i.photo.key);
+    // The editor's letter repeats the cover portrait in a circle; nothing else repeats.
+    const keys = doc.pages
+      .filter((p) => p.kind !== 'letter')
+      .flatMap((p) => p.elements)
+      .filter((e) => e.type === 'image')
+      .map((e) => (e as { photo: { key: string } }).photo.key);
+    expect(images.length).toBeGreaterThan(keys.length - 1);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
@@ -66,6 +71,53 @@ describe('Cover Me', () => {
     const doc = build(f.glossySource(), long);
     expect(doc.pages.length % 4).toBe(0);
     expect(doc.warnings.join(' ')).toMatch(/Материалов больше/);
+  });
+
+  it('sets a rubric for every kind of material in reading order', () => {
+    const doc = build(f.glossySource(), f.glossyDraft);
+    const kinds = doc.pages.map((p) => p.kind);
+    const order = ['cover', 'contents', 'letter', 'dossier', 'article', 'tastes', 'timeline', 'numbers', 'then-now', 'rules', 'friends', 'words', 'photos', 'back'];
+    const firstIndex = order.map((kind) => kinds.indexOf(kind));
+    expect(firstIndex.every((i) => i >= 0)).toBe(true);
+    expect([...firstIndex].sort((a, b) => a - b)).toEqual(firstIndex);
+    expect(texts(doc, 'dossier').join(' ')).toContain('Стрелец'); // born on 12 December
+    expect(texts(doc, 'numbers').join(' ')).toContain('3200');
+    expect(texts(doc, 'words').join(' ')).toContain('Ураган');
+  });
+
+  it('keeps prose from the AI as prose: a colon inside a sentence is not a question', () => {
+    const draft = { ...f.glossyDraft, sections: [{ heading: 'Большое интервью', body: 'Первый абзац.\n\nОна дошла: на день позже, но дошла.' }] };
+    const question = texts(build(f.glossySource(), draft), 'article').find((t) => t.startsWith('Она дошла'));
+    expect(question).toBeDefined();
+    const styled = build(f.glossySource(), draft)
+      .pages.flatMap((p) => p.elements)
+      .flatMap((e) => (e.type === 'text' ? e.lines : []))
+      .find((l) => l.pieces[0]?.text === 'Она');
+    expect(styled?.style.font).toBe('inter-400');
+  });
+
+  it('builds the full format from a minimal questionnaire and tells the studio materials are short', () => {
+    const minimal: LayoutSource = {
+      ...f.glossySource(),
+      answers: {
+        hero: { heroName: 'Дана', occasion: 'birthday', tone: 'tender' },
+        interview: { threeWords: 'Добрая, тихая, смелая', bestStory: 'Однажды она испекла торт на сто человек.' },
+        photos: { cover: [{ id: 'only', url: '/api/media/files/only.jpg' }] },
+      },
+      contributions: [],
+    };
+    const doc = build(minimal, { ...f.glossyDraft, generator: 'template', cards: [], sections: [] });
+    expect(doc.pages).toHaveLength(24);
+    expect(doc.pages[0]!.kind).toBe('cover');
+    expect(doc.pages.at(-1)!.kind).toBe('back');
+    expect(doc.warnings.join(' ')).toMatch(/Материалов мало/);
+  });
+
+  it('gives every friend a page of their own when a 36-page issue has room', () => {
+    const doc = build({ ...f.glossySource(), formatId: 'a4-36' }, f.glossyDraft);
+    expect(doc.pages).toHaveLength(36);
+    const friendPages = doc.pages.filter((p) => p.kind === 'friends');
+    expect(friendPages).toHaveLength(f.glossySource().contributions.length);
   });
 });
 

@@ -60,6 +60,20 @@ describe('images', () => {
     expect(maxError).toBeLessThan(12); // chroma is subsampled, so a little colour bleed is expected
   });
 
+  it('clamps saturated colours instead of wrapping them into speckles', () => {
+    // After YCbCr → RGB these colours land just outside 0…255; a Uint8Array wraps 256 to 0
+    // and −1 to 255, which turned red sweaters green and yellow backgrounds white.
+    const solid = (rgb: [number, number, number]) => {
+      const data = Buffer.alloc(64 * 64 * 4);
+      for (let i = 0; i < 64 * 64; i++) data.set([...rgb, 255], i * 4);
+      return decodeJpegDc(jpeg.encode({ width: 64, height: 64, data }, 75).data).data;
+    };
+    const orange = solid([255, 40, 0]);
+    expect(orange[0]).toBeGreaterThan(230);
+    const yellow = solid([255, 255, 0]);
+    expect(yellow[2]).toBeLessThan(30);
+  });
+
   it('makes an upright thumbnail no larger than asked', async () => {
     const thumb = await thumbnail(withOrientation(fakeJpeg(300, 200), 6), 100);
     expect(probe(thumb.data)).toMatchObject({ width: 67, height: 100 });

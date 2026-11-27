@@ -76,14 +76,28 @@ export function glossySource(): LayoutSource {
     designMode: 'auto',
     nextVersion: 1,
     answers: {
-      hero: { heroName: 'Айгерим', occasion: 'birthday', eventDate: '2026-12-12', tone: 'vogue' },
-      interview: { threeWords: 'Смелая, смешная, упрямая', bestStory: longStory, achievements: 'Открыла кофейню в 25 лет', dream: 'Объехать Казахстан на автодоме' },
+      hero: { heroName: 'Айгерим', occasion: 'birthday', eventDate: '2026-12-12', birthday: '1996-12-12', profession: 'Основательница кофейни «Дәм»', city: 'Алматы', tone: 'vogue' },
+      interview: { threeWords: 'Смелая, смешная, упрямая', bestStory: longStory, achievements: 'Открыла кофейню в 25 лет', childhood: 'Строила шалаши во дворе и командовала всеми мальчишками.', lesson: 'Если страшно — значит, надо делать.', dream: 'Объехать Казахстан на автодоме' },
+      favorites: { food: 'Мамин бешбармак', drink: 'Флэт уайт на овсяном', music: 'Ninety One', film: '«Друзья»', place: 'Кок-Жайляу на рассвете', phrase: 'Ну давайте уже!' },
+      timeline: { events: [
+        { year: '1996', title: 'Родилась в Караганде, в самую снежную зиму десятилетия', photo: [photo('t0')] },
+        { year: '2014', title: 'Переехала в Алматы с одним чемоданом' },
+        { year: '2018', title: 'Диплом экономиста и первая поездка в горы', photo: [photo('t1')] },
+        { year: '2021', title: 'Открыла кофейню «Дәм»' },
+        { year: '2024', title: 'Пробежала первый марафон' },
+      ] },
+      numbers: { facts: [
+        { value: '17', label: 'стран, где она пробовала местный кофе' },
+        { value: '3200', label: 'чашек флэт уайта сварено своими руками' },
+        { value: '42', label: 'км марафона без единой остановки' },
+        { value: '0', label: 'опозданий на плов' },
+      ] },
       rules: { rules: [{ text: 'Никогда не опаздывать на плов' }, { text: 'Говорить правду, даже когда неудобно' }, { text: 'Каждое лето — новые горы' }] },
-      photos: { cover: [photo('cover0')], gallery: photos('g', 14) },
+      photos: { cover: [photo('cover0')], childhood: [photo('k0')], gallery: photos('g', 14) },
     },
     contributions: [
-      { id: 'c1', authorName: 'Әсел Нұрланқызы', answers: { insight: { relation: 'Подруга с первого курса', story: longStory, wish: 'Оставайся такой же громкой!', photos: [photo('f0')] } }, createdAt: '2026-11-01T10:00:00.000Z' },
-      { id: 'c2', authorName: 'Ерлан', answers: { insight: { relation: 'Брат', story: 'Она научила меня ездить на велосипеде и ни разу не призналась, что сама боялась.', photos: [photo('f1'), photo('f2')] } }, createdAt: '2026-11-02T10:00:00.000Z' },
+      { id: 'c1', authorName: 'Әсел Нұрланқызы', answers: { insight: { relation: 'Подруга с первого курса', oneWord: 'Ураган', story: longStory, wish: 'Оставайся такой же громкой!', photos: [photo('f0')] } }, createdAt: '2026-11-01T10:00:00.000Z' },
+      { id: 'c2', authorName: 'Ерлан', answers: { insight: { relation: 'Брат', oneWord: 'Стена', story: 'Она научила меня ездить на велосипеде и ни разу не призналась, что сама боялась.', photos: [photo('f1'), photo('f2')] } }, createdAt: '2026-11-02T10:00:00.000Z' },
     ],
   };
 }

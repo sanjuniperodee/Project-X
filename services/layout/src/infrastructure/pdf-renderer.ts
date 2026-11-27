@@ -79,7 +79,11 @@ function drawElement(pdf: PDFKit.PDFDocument, element: Element, useFont: (key: s
         pdf.lineWidth(element.stroke.width);
         if (element.stroke.dash) pdf.dash(element.stroke.dash[0]!, { space: element.stroke.dash[1] ?? element.stroke.dash[0]! });
       }
-      if (element.fill && element.stroke) pdf.fillAndStroke(element.fill, element.stroke.color);
+      if (element.gradient) {
+        const gradient = pdf.linearGradient(x, y, x, y + h);
+        for (const [offset, opacity] of element.gradient.stops) gradient.stop(offset, element.gradient.color, opacity);
+        pdf.fill(gradient);
+      } else if (element.fill && element.stroke) pdf.fillAndStroke(element.fill, element.stroke.color);
       else if (element.fill) pdf.fill(element.fill);
       else if (element.stroke) pdf.stroke(element.stroke.color);
       pdf.restore();

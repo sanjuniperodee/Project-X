@@ -52,7 +52,7 @@ describe('layout worker', () => {
     await bus.drain();
 
     const event = bus.published.find((e) => e.type === 'layout.generated');
-    expect(event?.data).toMatchObject({ projectId: source.projectId, version: 3, template: 'glossy-magazine@1' });
+    expect(event?.data).toMatchObject({ projectId: source.projectId, version: 3, template: 'glossy-magazine@2' });
     const data = event!.data as { pdfUrl: string; pages: Array<{ previewUrl: string; kind: string; widthMm: number }> };
     expect(data.pages).toHaveLength(24);
     expect(data.pages[0]).toMatchObject({ kind: 'cover', widthMm: 210 });

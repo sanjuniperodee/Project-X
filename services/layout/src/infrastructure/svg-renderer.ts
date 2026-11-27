@@ -35,10 +35,19 @@ export function renderSvg(page: Page, fonts: FontLibrary, options: SvgRenderOpti
     switch (element.type) {
       case 'rect': {
         const { x, y, w, h } = element.box;
+        let fill = element.fill ? esc(element.fill) : 'none';
+        if (element.gradient) {
+          const id = `grad${clipCount++}`;
+          const stops = element.gradient.stops
+            .map(([offset, opacity]) => `<stop offset="${n(offset)}" stop-color="${esc(element.gradient!.color)}" stop-opacity="${n(opacity)}"/>`)
+            .join('');
+          defs.push(`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>`);
+          fill = `url(#${id})`;
+        }
         const attrs = [
           `x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}"`,
           element.radius ? `rx="${n(Math.min(element.radius, w / 2, h / 2))}"` : '',
-          `fill="${element.fill ? esc(element.fill) : 'none'}"`,
+          `fill="${fill}"`,
           element.stroke ? `stroke="${esc(element.stroke.color)}" stroke-width="${n(element.stroke.width)}"` : '',
           element.stroke?.dash ? `stroke-dasharray="${element.stroke.dash.map(n).join(' ')}"` : '',
           element.opacity !== undefined ? `fill-opacity="${n(element.opacity)}"` : '',
