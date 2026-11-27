@@ -18,7 +18,7 @@ function readEnv(file) {
 }
 const e = readEnv(path.join(ROOT, '.env'));
 
-const PORTS = { frontend: 3070, gateway: 3071, catalog: 3072, projects: 3073, payments: 3074, media: 3075, ai: 3076 };
+const PORTS = { frontend: 3070, gateway: 3071, catalog: 3072, projects: 3073, payments: 3074, media: 3075, ai: 3076, sales: 3077 };
 const NATS_URL = 'nats://127.0.0.1:4232';
 const url = (svc) => `http://127.0.0.1:${PORTS[svc]}`;
 const PG = (db) => `postgres://px:${encodeURIComponent(e.POSTGRES_PASSWORD)}@127.0.0.1:5432/${db}`;
@@ -46,8 +46,32 @@ function service(name, env = {}) {
   };
 }
 
+const SIDECARS = path.join(ROOT, 'sidecars');
+// Own Kaspi cashier gateway and WhatsApp gateway of Project X (installed by deploy/sidecars.sh).
+const sidecars = [
+  fs.existsSync(path.join(SIDECARS, 'kaspi-pos', 'server.js')) && {
+    name: 'px-kaspi-pos',
+    cwd: path.join(SIDECARS, 'kaspi-pos'),
+    script: 'server.js',
+    node_args: '--require ./localhost.cjs',
+    env: { NODE_ENV: 'production', TZ: 'Asia/Almaty' },
+    max_memory_restart: '300M',
+    time: true,
+  },
+  fs.existsSync(path.join(SIDECARS, 'gowa', 'whatsapp')) && {
+    name: 'px-gowa',
+    cwd: path.join(SIDECARS, 'gowa'),
+    script: './whatsapp',
+    args: 'rest',
+    interpreter: 'none',
+    max_memory_restart: '400M',
+    time: true,
+  },
+].filter(Boolean);
+
 module.exports = {
   apps: [
+    ...sidecars,
     {
       name: 'px-nats',
       cwd: path.join(ROOT, 'nats'),
@@ -61,12 +85,13 @@ module.exports = {
     service('payments', {
       DATABASE_URL: PG('px_payments'),
       PAYMENT_PROVIDER: e.PAYMENT_PROVIDER || 'mock',
-      // Shared kaspi-pos sidecar and cashier session of MyBooks; webhooks.json there has an entry for us.
-      KASPI_API_URL: e.KASPI_API_URL || 'http://127.0.0.1:3032',
+      // Own kaspi-pos (deploy/sidecars.sh); the cashier is connected in /admin and stored encrypted (SETTINGS_SECRET).
+      KASPI_API_URL: e.KASPI_API_URL || 'http://127.0.0.1:3082',
       KASPI_TOKEN_SN: e.KASPI_TOKEN_SN || '',
       KASPI_VTOKEN_SECRET: e.KASPI_VTOKEN_SECRET || '',
       KASPI_PROFILE_ID: e.KASPI_PROFILE_ID || '0',
       KASPI_WEBHOOK_SECRET: e.KASPI_WEBHOOK_SECRET || '',
+      SETTINGS_SECRET: e.SETTINGS_SECRET || '',
     }),
     service('media', {
       STORAGE_DRIVER: e.STORAGE_DRIVER || 'local',
@@ -84,9 +109,25 @@ module.exports = {
       ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY || '',
       AI_MODEL: e.AI_MODEL || 'claude-opus-5-5',
     }),
+    service('sales', {
+      DATABASE_URL: PG('px_sales'),
+      PROJECTS_URL: url('projects'),
+      PRODUCT_URLS: e.PRODUCT_URLS || '',
+      // Own WhatsApp gateway (deploy/sidecars.sh); empty → WhatsApp off.
+      GOWA_API_URL: e.GOWA_API_URL || '',
+      GOWA_BASIC_AUTH: e.GOWA_BASIC_AUTH || '',
+      GOWA_CALLBACK_URL: e.GOWA_CALLBACK_URL || '',
+      GOWA_WEBHOOK_SECRET: e.GOWA_WEBHOOK_SECRET || '',
+      ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY || '',
+      SALES_MODEL: e.SALES_MODEL || 'claude-opus-5-5',
+      SALES_EFFORT: e.SALES_EFFORT || 'medium',
+      BOT_ENABLED: e.BOT_ENABLED || 'true',
+      STUDIO_PHONE: e.STUDIO_PHONE || '',
+    }),
     service('gateway', {
       PROJECTS_URL: url('projects'),
       MEDIA_URL: url('media'),
+      SALES_URL: url('sales'),
       CORS_ORIGINS: e.CORS_ORIGINS || e.FRONTEND_URL,
       ADMIN_TOKEN: e.ADMIN_TOKEN,
       // Only the frontend (same host) talks to the gateway; nginx overwrites X-Forwarded-For with the real client IP.
