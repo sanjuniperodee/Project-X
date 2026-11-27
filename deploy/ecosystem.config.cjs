@@ -125,6 +125,8 @@ module.exports = {
     service('sales', {
       DATABASE_URL: PG('px_sales'),
       PROJECTS_URL: url('projects'),
+      MEDIA_URL: url('media'),
+      WA_CATALOG_DOCS: e.WA_CATALOG_DOCS || '',
       PRODUCT_URLS: e.PRODUCT_URLS || '',
       // Own WhatsApp gateway (deploy/sidecars.sh); empty → WhatsApp off.
       GOWA_API_URL: e.GOWA_API_URL || '',

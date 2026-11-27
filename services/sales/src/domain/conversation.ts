@@ -13,6 +13,8 @@ export interface Conversation {
   handoffReason: string | null;
   pending: boolean;
   botTurns: number;
+  followUps: number;
+  lastCustomerAt: Date | null;
   lastMessageAt: Date;
   createdAt: Date;
 }

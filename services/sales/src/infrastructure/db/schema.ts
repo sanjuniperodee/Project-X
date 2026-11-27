@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** One WhatsApp chat with a customer (chat id: phone digits, or a hidden-number LID). */
 export const conversations = pgTable(
@@ -16,6 +16,9 @@ export const conversations = pgTable(
     /** Unanswered customer messages are waiting for the bot. */
     pending: boolean('pending').notNull().default(false),
     botTurns: integer('bot_turns').notNull().default(0),
+    /** Reminders sent since the customer last wrote (MyBooks ladder: warm 20 min / 3 h / next day, cold 3 h / next day). */
+    followUps: integer('follow_ups').notNull().default(0),
+    lastCustomerAt: timestamp('last_customer_at', { withTimezone: true }),
     lastMessageAt: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -55,4 +58,28 @@ export const conversationProjects = pgTable(
 export const processedEvents = pgTable('processed_events', {
   eventId: text('event_id').primaryKey(),
   processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Photos for the WhatsApp catalog, per product (media URLs). WhatsApp refuses a product without a photo. */
+export const catalogPhotos = pgTable('catalog_photos', {
+  productId: text('product_id').primaryKey(),
+  images: jsonb('images').$type<string[]>().notNull().default([]),
+  /** Bumped on every change; equal to syncedVersion once WhatsApp has these photos. */
+  version: integer('version').notNull().default(1),
+  syncedVersion: integer('synced_version').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Copy of the WhatsApp catalog (refreshed on every sync): what the bot can send as a card. */
+export const waProducts = pgTable('wa_products', {
+  id: text('id').primaryKey(),
+  retailerId: text('retailer_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  price: integer('price'),
+  url: text('url').notNull().default(''),
+  review: text('review').notNull().default(''),
+  imageUrl: text('image_url'),
+  imageCount: integer('image_count').notNull().default(0),
+  syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
 });
