@@ -8,7 +8,7 @@ mkdir -p "$DEST"
 PGPASSWORD=$(grep '^POSTGRES_PASSWORD=' "$ROOT/.env" | cut -d= -f2-)
 export PGPASSWORD
 STAMP=$(date +%Y%m%d-%H%M)
-for db in px_projects px_payments; do
+for db in px_projects px_payments px_sales; do
   pg_dump -h 127.0.0.1 -U px --no-owner "$db" | gzip -9 > "$DEST/$db-$STAMP.sql.gz.part"
   mv "$DEST/$db-$STAMP.sql.gz.part" "$DEST/$db-$STAMP.sql.gz"
 done
