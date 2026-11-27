@@ -1,16 +1,32 @@
 import { NatsEventBus } from '@px/service-kit';
 import { buildPaymentsApp } from './app';
-import { config, kaspiOptions } from './config';
+import { CashierService } from './application/cashier-service';
+import { config, envKaspiSession } from './config';
 import { createDatabase, runMigrations } from './infrastructure/db/client';
+import { EncryptedSettingsStore } from './infrastructure/settings-store';
 import { createProvider } from './providers';
+import { KaspiCashier } from './providers/kaspi/kaspi-cashier';
+import { KaspiPosClient } from './providers/kaspi/kaspi-pos-client';
 
 const database = createDatabase(config.DATABASE_URL);
 await runMigrations(database.db, config.MIGRATIONS_DIR);
 
+// Kaspi: one kaspi-pos client; the session comes from the cashier connected in /admin (or the env fallback).
+const kaspi = config.PAYMENT_PROVIDER === 'kaspi';
+let cashier: CashierService | undefined;
+const kaspiClient = new KaspiPosClient(config.KASPI_API_URL, { session: async () => (cashier ? cashier.session() : null) });
+if (kaspi) {
+  cashier = new CashierService(new EncryptedSettingsStore(database.db, config.SETTINGS_SECRET), new KaspiCashier(kaspiClient), envKaspiSession);
+}
+
 const { service, relay, payments } = await buildPaymentsApp({
   db: database.db,
   connectBus: (log) => NatsEventBus.connect({ url: config.NATS_URL, name: 'payments', log }),
-  provider: createProvider(config.PAYMENT_PROVIDER, { frontendUrl: config.FRONTEND_URL, kaspi: kaspiOptions }),
+  provider: createProvider(config.PAYMENT_PROVIDER, {
+    frontendUrl: config.FRONTEND_URL,
+    kaspi: { client: kaspiClient, webhookSecret: config.KASPI_WEBHOOK_SECRET },
+  }),
+  cashier,
   logLevel: config.LOG_LEVEL,
   prettyLogs: config.NODE_ENV === 'development',
 });

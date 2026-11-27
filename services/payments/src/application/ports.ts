@@ -15,3 +15,9 @@ export interface PaymentRepository {
   /** Pending payments of the provider created after `since`, oldest first. */
   listPending(provider: string, since: Date): Promise<Payment[]>;
 }
+
+/** Key-value settings of the service. Values are opaque strings; encryption is the store's concern. */
+export interface SettingsStore {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string | null): Promise<void>;
+}
