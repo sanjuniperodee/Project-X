@@ -126,7 +126,7 @@ export class SalesService {
       const text = await agent.reply({ conversation: c, history, tools: this.toolsFor(c), now });
       const fresh = (await repository.get(c.id)) ?? c;
       if (text?.trim()) {
-        await this.send(fresh, 'bot', stripForeignLinks(text.trim(), this.deps.links.allowedOrigins()));
+        await this.send(fresh, 'bot', toWhatsApp(stripForeignLinks(text.trim(), this.deps.links.allowedOrigins())));
         fresh.botTurns += 1;
       }
       await repository.update(fresh);
@@ -336,7 +336,7 @@ export class SalesService {
       },
     };
     const reply = await agent.reply({ conversation, history, tools, now });
-    return { reply: reply ? stripForeignLinks(reply, this.deps.links.allowedOrigins()) : null, actions };
+    return { reply: reply ? toWhatsApp(stripForeignLinks(reply, this.deps.links.allowedOrigins())) : null, actions };
   }
 
   // ---------- internals ----------
@@ -376,6 +376,11 @@ export class SalesService {
     const externalId = await this.deps.whatsapp.sendText(c.chatId, text);
     await this.store(c, author, text, externalId);
   }
+}
+
+/** Markdown habits of the model → WhatsApp formatting (**bold** → *bold*, no # headings). */
+export function toWhatsApp(text: string) {
+  return text.replace(/\*\*(.+?)\*\*/g, '*$1*').replace(/^#{1,6}\s+/gm, '');
 }
 
 function summary(c: Conversation) {

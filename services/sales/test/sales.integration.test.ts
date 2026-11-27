@@ -4,7 +4,7 @@ import { createEnvelope } from '@px/service-kit';
 import { InMemoryEventBus } from '@px/service-kit/testing';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
-import { setEchoGrace } from '../src/application/sales-service';
+import { setEchoGrace, toWhatsApp } from '../src/application/sales-service';
 import type { CatalogGateway, ProjectsGateway, SellerAgent, WhatsAppGateway } from '../src/application/ports';
 import { toMessages } from '../src/agent/claude-seller';
 import { buildSalesApp } from '../src/app';
@@ -218,4 +218,8 @@ it('lists conversations for the studio', async () => {
   const list = (await app.service.app.inject({ method: 'GET', url: '/admin/conversations' })).json();
   expect(list.items.length).toBe(2);
   expect(list.items.find((c: { phone: string }) => c.phone === '77015556677')).toMatchObject({ projectsCount: 1 });
+});
+
+it('converts markdown habits to WhatsApp formatting', () => {
+  expect(toWhatsApp('## Итог\n**25 000 ₸** за журнал')).toBe('Итог\n*25 000 ₸* за журнал');
 });
