@@ -14,6 +14,9 @@ import {
 import { parseEventPayload, type EventEnvelope, type EventPayload, type EventType } from '@px/contracts';
 
 const STREAM = 'PX_EVENTS';
+const ACK_WAIT_MS = 60_000;
+/** Long handlers (AI generation, PDF rendering) keep the message from being redelivered while they work. */
+const HEARTBEAT_MS = 20_000;
 const SUBJECT_PREFIX = 'px.';
 const codec = JSONCodec<EventEnvelope>();
 
@@ -23,7 +26,14 @@ export interface Logger {
   error(obj: object, msg?: string): void;
 }
 
-export type EventHandler<T extends EventType> = (event: EventEnvelope<T>) => Promise<void>;
+/** Delivery details, e.g. to give up gracefully on the last attempt. */
+export interface DeliveryInfo {
+  /** 1 for the first delivery. */
+  attempt: number;
+  maxAttempts: number;
+}
+
+export type EventHandler<T extends EventType> = (event: EventEnvelope<T>, delivery: DeliveryInfo) => Promise<void>;
 
 export interface SubscribeOptions {
   /**
@@ -88,8 +98,9 @@ export class NatsEventBus implements EventBus {
       ack_policy: AckPolicy.Explicit,
       deliver_policy: DeliverPolicy.All,
       max_deliver: options.maxDeliver ?? 10,
-      ack_wait: 60_000_000_000, // 60s in nanoseconds
+      ack_wait: ACK_WAIT_MS * 1_000_000, // nanoseconds
     });
+    const maxAttempts = options.maxDeliver ?? 10;
     const consumer = await this.js.consumers.get(STREAM, options.durable);
     const messages = await consumer.consume();
     this.subscriptions.push(messages);
@@ -106,13 +117,16 @@ export class NatsEventBus implements EventBus {
           continue;
         }
 
+        const attempt = message.info.deliveryCount;
+        const heartbeat = setInterval(() => message.working(), HEARTBEAT_MS);
         try {
-          await handler(envelope);
+          await handler(envelope, { attempt, maxAttempts });
           message.ack();
         } catch (error) {
-          const attempt = message.info.deliveryCount;
           this.log.warn({ err: error, eventId: envelope.id, type, attempt }, 'Event handler failed, will retry');
           message.nak(Math.min(30_000, 1_000 * 2 ** attempt));
+        } finally {
+          clearInterval(heartbeat);
         }
       }
     })();

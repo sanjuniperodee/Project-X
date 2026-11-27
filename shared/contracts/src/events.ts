@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DraftContent } from './drafts';
 import { Answers } from './fields';
+import { LayoutPage } from './layouts';
 import { ProductId } from './products';
 import { Contribution, PaymentKind } from './projects';
 import { Tenge } from './money';
@@ -12,14 +13,36 @@ import { Tenge } from './money';
  * an event; any service may subscribe. Payloads are versioned by adding new event
  * types, never by breaking existing ones.
  */
+const SubmittedMaterials = z.object({
+  projectId: z.string(),
+  productId: ProductId,
+  subject: z.string(),
+  formatId: z.string(),
+  answers: Answers,
+  contributions: z.array(Contribution),
+});
+
 export const EventCatalog = {
-  'projects.submitted': z.object({
+  'projects.submitted': SubmittedMaterials,
+  /** The customer asked for changes to a layout: ai rewrites the draft, layout typesets the next version. */
+  'projects.revision_requested': SubmittedMaterials.extend({
+    /** 1 for the first round of changes. */
+    revision: z.number().int().positive(),
+    layoutVersion: z.number().int().positive(),
+    comment: z.string(),
+    /** The draft the rejected layout was built from. */
+    draft: DraftContent,
+  }),
+  'projects.layout_approved': z.object({
     projectId: z.string(),
     productId: ProductId,
-    subject: z.string(),
-    formatId: z.string(),
-    answers: Answers,
-    contributions: z.array(Contribution),
+    version: z.number().int().positive(),
+  }),
+  /** Automatic design stopped (revision limit, layout failure): a person in the studio takes over. */
+  'projects.design_handoff': z.object({
+    projectId: z.string(),
+    productId: ProductId,
+    reason: z.string(),
   }),
   'projects.status_changed': z.object({
     projectId: z.string(),
@@ -37,6 +60,24 @@ export const EventCatalog = {
     projectId: z.string(),
     draft: DraftContent,
     generator: z.string(),
+    /** Set when the draft answers `projects.revision_requested`. */
+    revision: z.number().int().positive().optional(),
+  }),
+  'layout.generated': z.object({
+    projectId: z.string(),
+    version: z.number().int().positive(),
+    pdfUrl: z.string().min(1),
+    pages: z.array(LayoutPage).min(1),
+    /** Template id and revision, e.g. "glossy-magazine@1". */
+    template: z.string(),
+    warnings: z.array(z.string()),
+  }),
+  /** The layout could not be produced even after retries. */
+  'layout.failed': z.object({
+    projectId: z.string(),
+    /** Unknown when even the project could not be loaded. */
+    version: z.number().int().positive().optional(),
+    reason: z.string(),
   }),
 } as const;
 

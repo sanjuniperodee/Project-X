@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { Draft } from './drafts';
+import { Draft, DraftContent } from './drafts';
 import { Answers, StepAnswers } from './fields';
+import { DesignMode, DesignState, LayoutView } from './layouts';
 import { ProductId } from './products';
 import { Quote, QuoteSelection } from './quote';
 
@@ -56,7 +57,7 @@ export function manualTransitions(from: ProjectStatus): ProjectStatus[] {
 export const PROJECT_STATUS_LABELS: Readonly<Record<ProjectStatus, string>> = {
   draft: 'Ждёт предоплату',
   deposit_paid: 'Собираем материалы',
-  in_design: 'Дизайнер верстает',
+  in_design: 'Верстаем макет',
   awaiting_approval: 'Макет готов — ждёт вашего согласования',
   paid: 'Оплачено, готовим к печати',
   printing: 'В типографии',
@@ -163,6 +164,9 @@ export const ProjectView = z.object({
   answers: Answers,
   contributions: z.array(Contribution),
   draft: Draft.nullable(),
+  /** Latest layout version, if one was made. */
+  layout: LayoutView.nullable(),
+  design: DesignState,
   inviteKey: z.string(),
   paidAmount: z.number().int().nonnegative(),
   history: z.array(StatusChange),
@@ -205,5 +209,38 @@ export type ProjectList = z.infer<typeof ProjectList>;
 /** Studio view: owner view plus edit key so the team can open the customer's workspace. */
 export const AdminProjectView = ProjectView.extend({
   editKey: z.string(),
+  /** Every layout version, newest first. */
+  layouts: z.array(LayoutView),
 });
 export type AdminProjectView = z.infer<typeof AdminProjectView>;
+
+// ---------- Internal (service to service) ----------
+
+/**
+ * Everything the layout service needs to typeset a project: `GET /internal/projects/:id/layout-source`.
+ * Materials are frozen once the project is in design, so this is a stable snapshot.
+ */
+export const LayoutSource = z.object({
+  projectId: z.string(),
+  productId: ProductId,
+  subject: z.string(),
+  formatId: z.string(),
+  status: ProjectStatus,
+  designMode: DesignMode,
+  /** Version number the next generated layout gets. */
+  nextVersion: z.number().int().positive(),
+  answers: Answers,
+  contributions: z.array(Contribution),
+});
+export type LayoutSource = z.infer<typeof LayoutSource>;
+
+/**
+ * `POST /internal/preview` of the layout service: renders a PDF from given materials without
+ * storing or publishing anything. For tuning templates and support.
+ */
+export const LayoutPreviewRequest = z.object({
+  source: LayoutSource.omit({ status: true, designMode: true, nextVersion: true }),
+  draft: DraftContent,
+  generator: z.string().default('preview'),
+});
+export type LayoutPreviewRequest = z.infer<typeof LayoutPreviewRequest>;

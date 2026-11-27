@@ -6,7 +6,7 @@ import { createEnvelope, type EventBus, type EventHandler, type SubscribeOptions
  * handlers like the real bus, and lets tests await until all events are processed.
  */
 export class InMemoryEventBus implements EventBus {
-  private readonly handlers = new Map<EventType, Array<{ durable: string; handler: EventHandler<EventType> }>>();
+  private readonly handlers = new Map<EventType, Array<{ durable: string; maxAttempts: number; handler: EventHandler<EventType> }>>();
   private readonly inFlight = new Set<Promise<void>>();
   readonly published: EventEnvelope[] = [];
 
@@ -18,15 +18,19 @@ export class InMemoryEventBus implements EventBus {
 
   async publishEnvelope(envelope: EventEnvelope): Promise<void> {
     this.published.push(envelope);
-    for (const { handler } of this.handlers.get(envelope.type) ?? []) {
-      const delivery = this.deliver(handler, envelope).finally(() => this.inFlight.delete(delivery));
+    for (const { handler, maxAttempts } of this.handlers.get(envelope.type) ?? []) {
+      const delivery = this.deliver(handler, envelope, maxAttempts).finally(() => this.inFlight.delete(delivery));
       this.inFlight.add(delivery);
     }
   }
 
   async subscribe<T extends EventType>(type: T, options: SubscribeOptions, handler: EventHandler<T>): Promise<void> {
     const list = this.handlers.get(type) ?? [];
-    list.push({ durable: options.durable, handler: handler as EventHandler<EventType> });
+    list.push({
+      durable: options.durable,
+      maxAttempts: options.maxDeliver ?? this.maxAttempts,
+      handler: handler as EventHandler<EventType>,
+    });
     this.handlers.set(type, list);
   }
 
@@ -41,13 +45,13 @@ export class InMemoryEventBus implements EventBus {
     await this.drain();
   }
 
-  private async deliver(handler: EventHandler<EventType>, envelope: EventEnvelope): Promise<void> {
+  private async deliver(handler: EventHandler<EventType>, envelope: EventEnvelope, maxAttempts: number): Promise<void> {
     for (let attempt = 1; ; attempt++) {
       try {
-        await handler(envelope);
+        await handler(envelope, { attempt, maxAttempts });
         return;
       } catch (error) {
-        if (attempt >= this.maxAttempts) throw error;
+        if (attempt >= maxAttempts) throw error;
       }
     }
   }
