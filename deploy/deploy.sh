@@ -28,7 +28,7 @@ healthy() {
   local ok=0
   for i in $(seq 1 30); do
     ok=1
-    for port in 3071 3072 3073 3074 3075 3076; do
+    for port in 3071 3072 3073 3074 3075 3076 3077; do
       # /ready checks the service's dependencies (Postgres, NATS, S3), not just that the process is up.
       curl -fsS "http://127.0.0.1:$port/ready" >/dev/null 2>&1 || { ok=0; break; }
     done

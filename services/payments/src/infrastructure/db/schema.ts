@@ -36,3 +36,10 @@ export const outbox = pgTable(
   },
   (t) => [index('outbox_unpublished_idx').on(t.createdAt).where(sql`published_at IS NULL`)],
 );
+
+/** Service settings; secret values (the Kaspi cashier session) are stored encrypted. */
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

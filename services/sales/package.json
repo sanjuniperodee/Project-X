@@ -1,0 +1,31 @@
+{
+  "name": "@px/sales-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sales: AI seller in the studio WhatsApp, order notifications, conversations",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file-if-exists=.env src/infrastructure/db/migrate-cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "@px/contracts": "file:../../shared/contracts",
+    "@px/service-kit": "file:../../shared/service-kit",
+    "drizzle-orm": "^0.45.4",
+    "postgres": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "drizzle-kit": "^0.31.11",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2"
+  }
+}

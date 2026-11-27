@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 22
       - name: Test databases
-        run: psql postgres://px:px@localhost:5432/px -c 'CREATE DATABASE px_projects_test' -c 'CREATE DATABASE px_payments_test'
+        run: psql postgres://px:px@localhost:5432/px -c 'CREATE DATABASE px_projects_test' -c 'CREATE DATABASE px_payments_test' -c 'CREATE DATABASE px_sales_test'
       - name: Install
         run: |
           for p in shared/contracts shared/service-kit services/* frontend; do

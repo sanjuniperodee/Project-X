@@ -15,7 +15,7 @@ export function createProvider(id: PaymentProviderId, options: ProviderOptions):
     case 'mock':
       return new MockPaymentProvider(options.frontendUrl);
     case 'kaspi':
-      if (!options.kaspi) throw new Error('PAYMENT_PROVIDER=kaspi needs the KASPI_* settings');
+      if (!options.kaspi) throw new Error('PAYMENT_PROVIDER=kaspi needs a kaspi-pos client');
       return new KaspiPaymentProvider({ ...options.kaspi, frontendUrl: options.frontendUrl });
   }
 }

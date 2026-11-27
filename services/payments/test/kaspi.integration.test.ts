@@ -4,6 +4,10 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { buildPaymentsApp } from '../src/app';
 import { createDatabase, runMigrations } from '../src/infrastructure/db/client';
+import { CashierService } from '../src/application/cashier-service';
+import { EncryptedSettingsStore } from '../src/infrastructure/settings-store';
+import { KaspiCashier } from '../src/providers/kaspi/kaspi-cashier';
+import { KaspiPosClient } from '../src/providers/kaspi/kaspi-pos-client';
 import { KaspiPaymentProvider } from '../src/providers/kaspi/kaspi-provider';
 
 const database = createDatabase(process.env.TEST_DATABASE_URL ?? 'postgres://px:px@localhost:5432/px_payments_test');
@@ -26,6 +30,15 @@ const fakeFetch: typeof fetch = async (input, init) => {
     kaspi.statuses.set(id, 'Wait');
     return Response.json({ StatusCode: 0, Data: { Id: Number(id), Status: 'Wait' } });
   }
+  if (url.pathname === '/api/auth/init') return Response.json({ processId: 'proc-1' });
+  if (url.pathname === '/api/auth/send-phone') return Response.json({ ok: true });
+  if (url.pathname === '/api/auth/verify-otp') {
+    const { otp } = JSON.parse(String(init?.body));
+    return otp === '1234'
+      ? Response.json({ data: { tokenSN: 'new-sn', vtokenSecret: 'new-vs', profileId: 9, orgName: 'Project X', phone: '77015556677' } })
+      : Response.json({ data: {} });
+  }
+  if (url.pathname === '/api/session/check') return Response.json({ active: true });
   if (url.pathname === '/api/invoice/details') {
     const id = url.searchParams.get('operationId')!;
     return Response.json({ StatusCode: 0, Data: { Id: Number(id), Status: kaspi.statuses.get(id) ?? 'Unknown' } });
@@ -34,22 +47,19 @@ const fakeFetch: typeof fetch = async (input, init) => {
 };
 
 let app: Awaited<ReturnType<typeof buildPaymentsApp>>;
+let cashier: CashierService;
 
 beforeAll(async () => {
   await database.db.execute(sql`drop schema if exists public cascade; drop schema if exists drizzle cascade; create schema public;`);
   await runMigrations(database.db, './drizzle');
+  const client = new KaspiPosClient('http://kaspi-pos.test', { session: () => cashier.session() }, fakeFetch);
+  const envSession = { tokenSn: 'sn', vtokenSecret: 'vs', profileId: 7, orgName: '', phone: '', connectedAt: '' };
+  cashier = new CashierService(new EncryptedSettingsStore(database.db, 'x'.repeat(32)), new KaspiCashier(client), envSession);
   app = await buildPaymentsApp({
     db: database.db,
     connectBus: async () => bus,
-    provider: new KaspiPaymentProvider({
-      apiUrl: 'http://kaspi-pos.test',
-      tokenSn: 'sn',
-      vtokenSecret: 'vs',
-      profileId: 7,
-      webhookSecret: SECRET,
-      frontendUrl: 'http://localhost:3000',
-      fetchImpl: fakeFetch,
-    }),
+    provider: new KaspiPaymentProvider({ client, webhookSecret: SECRET, frontendUrl: 'http://localhost:3000' }),
+    cashier,
     logLevel: 'warn',
   });
 });
@@ -141,4 +151,27 @@ it('has no manual confirmation outside the test provider', async () => {
   const payment = (await create('+77012345678')).json();
   const res = await app.service.app.inject({ method: 'POST', url: `/payments/${payment.id}/mock/confirm`, payload: { outcome: 'success' } });
   expect(res.statusCode).toBe(404);
+});
+
+it('connects the studio cashier by SMS and bills with the new session', async () => {
+  const inject = (url: string, payload?: object) =>
+    app.service.app.inject({ method: payload ? 'POST' : 'GET', url, payload });
+
+  expect((await inject('/admin/payments/kaspi')).json()).toMatchObject({ enabled: true, connected: true, source: 'env', active: true });
+
+  const code = await inject('/admin/payments/kaspi/code', { phone: '+7 701 555 66 77' });
+  expect(code.json()).toEqual({ processId: 'proc-1' });
+
+  expect((await inject('/admin/payments/kaspi/verify', { processId: 'proc-1', otp: '0000' })).statusCode).toBe(422);
+  const verified = (await inject('/admin/payments/kaspi/verify', { processId: 'proc-1', otp: '1234' })).json();
+  expect(verified).toMatchObject({ connected: true, source: 'settings', orgName: 'Project X', phone: '+7701 *** ** 77' });
+
+  // Stored encrypted, not in plain text.
+  const [row] = await database.db.execute(sql`select value from settings where key = 'kaspi.session'`);
+  expect(String((row as { value: string }).value)).not.toContain('new-vs');
+
+  await create('+77012345678');
+  expect(kaspi.headers.at(-1)).toMatchObject({ 'X-Token-SN': 'new-sn', 'X-Vtoken-Secret': 'new-vs', 'X-Profile-Id': '9' });
+
+  expect((await inject('/admin/payments/kaspi/disconnect', {})).json()).toMatchObject({ source: 'env' });
 });

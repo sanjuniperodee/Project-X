@@ -1,6 +1,13 @@
 import 'server-only';
 import {
   AdminProjectView,
+  ConversationList,
+  ConversationView,
+  SellerTrialResponse,
+  WhatsAppQr,
+  WhatsAppStatus,
+  KaspiCashierStatus,
+  KaspiCodeResponse,
   InviteView,
   PaymentView,
   Product,
@@ -44,5 +51,28 @@ export const api = {
         body,
         headers: adminHeaders(),
       }),
+    whatsapp: {
+      status: () => call('/admin/whatsapp', WhatsAppStatus, { headers: adminHeaders() }),
+      qr: () => call('/admin/whatsapp/qr', WhatsAppQr, { method: 'POST', body: {}, headers: adminHeaders() }),
+      logout: () => call('/admin/whatsapp/logout', WhatsAppStatus, { method: 'POST', body: {}, headers: adminHeaders() }),
+    },
+    conversations: {
+      list: () => call('/admin/conversations', ConversationList, { headers: adminHeaders() }).then((r) => r.items),
+      get: (id: string) => call(`/admin/conversations/${encodeURIComponent(id)}`, ConversationView, { headers: adminHeaders() }),
+      reply: (id: string, text: string) =>
+        call(`/admin/conversations/${encodeURIComponent(id)}/reply`, ConversationView, { method: 'POST', body: { text }, headers: adminHeaders() }),
+      mode: (id: string, mode: 'bot' | 'human') =>
+        call(`/admin/conversations/${encodeURIComponent(id)}/mode`, ConversationView, { method: 'POST', body: { mode }, headers: adminHeaders() }),
+    },
+    sellerTrial: (messages: { author: 'customer' | 'bot'; text: string }[]) =>
+      call('/admin/sales/trial', SellerTrialResponse, { method: 'POST', body: { messages }, headers: adminHeaders(), signal: AbortSignal.timeout(120_000) }),
+    kaspi: {
+      status: () => call('/admin/payments/kaspi', KaspiCashierStatus, { headers: adminHeaders() }),
+      requestCode: (phone: string) =>
+        call('/admin/payments/kaspi/code', KaspiCodeResponse, { method: 'POST', body: { phone }, headers: adminHeaders() }),
+      verify: (processId: string, otp: string) =>
+        call('/admin/payments/kaspi/verify', KaspiCashierStatus, { method: 'POST', body: { processId, otp }, headers: adminHeaders() }),
+      disconnect: () => call('/admin/payments/kaspi/disconnect', KaspiCashierStatus, { method: 'POST', body: {}, headers: adminHeaders() }),
+    },
   },
 };

@@ -8,7 +8,7 @@ ROOT=$PWD
 SHA=$(git rev-parse --short HEAD)
 OUT=$ROOT/dist/release
 STAGE=$OUT/px-$SHA
-SERVICES=(catalog gateway projects payments media ai)
+SERVICES=(catalog gateway projects payments media ai sales)
 
 rm -rf "$STAGE" && mkdir -p "$STAGE/services"
 
@@ -37,6 +37,7 @@ find "$STAGE/frontend" -type d \( -path '*/node_modules/@img' -o -path '*/node_m
 if find "$STAGE" -name '*.node' | grep -q .; then echo "native addons in the release:"; find "$STAGE" -name '*.node'; exit 1; fi
 
 cp deploy/ecosystem.config.cjs "$STAGE/"
+mkdir -p "$STAGE/deploy" && cp deploy/sidecars.sh deploy/kaspi-localhost.cjs deploy/backup.sh "$STAGE/deploy/"
 echo "$SHA" > "$STAGE/REVISION"
 
 COPYFILE_DISABLE=1 tar --no-xattrs -C "$OUT" -czf "$OUT/px-$SHA.tar.gz" "px-$SHA"

@@ -23,21 +23,28 @@ elsewhere and only unpacked.
 |---|---|
 | px-frontend | [::1]:3070 (Next with `HOSTNAME=localhost`, needed for brand-domain rewrites) |
 | px-gateway | 127.0.0.1:3071 |
-| px-catalog / px-projects / px-payments / px-media / px-ai | 127.0.0.1:3072…3076 |
+| px-catalog / px-projects / px-payments / px-media / px-ai / px-sales | 127.0.0.1:3072…3077 |
+| px-kaspi-pos / px-gowa | 127.0.0.1:3082 / 3083 (`deploy/sidecars.sh`) |
 | px-nats | 127.0.0.1:4232, monitoring 127.0.0.1:8232 |
 
-- Postgres: system cluster, role `px` (CONNECTION LIMIT 25), databases `px_projects`, `px_payments`.
+- Postgres: system cluster, role `px` (CONNECTION LIMIT 25), databases `px_projects`, `px_payments`, `px_sales`.
 - nginx: `/etc/nginx/sites-available/px` (`deploy/nginx.conf` + certbot, certificate `px`). It overwrites
   `X-Forwarded-For` with the real client address and rate-limits `/api` in front of the gateway's own limit.
 
-## Integrations borrowed from MyBooks
+## Integrations
 
-- **Kaspi Pay**: the shared `kaspi-pos` sidecar (127.0.0.1:3032) with the MyBooks cashier session (`KASPI_*`).
-  Money goes to the same Kaspi cashier as MyBooks. `~/kaspi-pos/webhooks.json` has an entry for
-  `http://127.0.0.1:3074/webhooks/kaspi` with our own secret (`KASPI_WEBHOOK_SECRET`); notifications about
-  MyBooks / my-test payments are ignored. Every 30 s pending payments are re-checked with Kaspi in case a webhook is lost.
-  If kaspi-pos answers 401, the cashier session expired: re-login in MyBooks, then copy the new `KASPI_*` into `~/px/.env`.
-- **Claude**: the Anthropic key from MyBooks settings (`AI_GENERATOR=claude`).
+- **Kaspi Pay — own cashier.** Own `kaspi-pos` instance (`~/px/sidecars/kaspi-pos`, 127.0.0.1:3082, PM2 `px-kaspi-pos`),
+  installed by `deploy/sidecars.sh kaspi`. The cashier is connected in `/admin/integrations` (phone → SMS code); the
+  session is stored encrypted in `px_payments.settings` (`SETTINGS_SECRET`). Expired session → connect again there.
+  Webhooks of this kaspi-pos go only to `http://127.0.0.1:3074/webhooks/kaspi`; pending payments are also re-checked every 30 s.
+  The shared kaspi-pos of MyBooks / my-test (3032) is not used.
+- **WhatsApp — own number.** Own GOWA (`~/px/sidecars/gowa`, 127.0.0.1:3083, PM2 `px-gowa`, `deploy/sidecars.sh whatsapp`),
+  device `px`, webhook → `px-sales` (`/webhooks/whatsapp`, signed). The number is linked by QR in `/admin/integrations`.
+- **AI seller** (`px-sales`, 127.0.0.1:3077, DB `px_sales`): Claude answers customers in WhatsApp, creates orders and bills
+  the Kaspi deposit / balance; customers get a message on every status change. Chats, hand-offs and studio replies:
+  `/admin/chats`; a trial dialog without real orders: `/admin/integrations`. `STUDIO_PHONE` in `~/px/.env` gets hand-off
+  and payment alerts. `BOT_ENABLED=false` keeps notifications but stops bot replies.
+- **Claude**: the Anthropic key from MyBooks settings (`ANTHROPIC_API_KEY`, used by `px-ai` and `px-sales`).
 - **S3**: MyBooks' PS Cloud Object Storage keys, separate prefix `px/`.
 
 ## Release

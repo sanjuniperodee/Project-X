@@ -14,9 +14,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <Link href="/admin" className="font-semibold">
             {SITE.name}: заказы
           </Link>
-          <Link href="/" className="text-sm text-muted underline-offset-4 hover:underline">
-            Сайт
-          </Link>
+          <nav className="flex items-center gap-5 text-sm text-muted">
+            <Link href="/admin/chats" className="underline-offset-4 hover:underline">
+              Чаты
+            </Link>
+            <Link href="/admin/integrations" className="underline-offset-4 hover:underline">
+              Интеграции
+            </Link>
+            <Link href="/" className="underline-offset-4 hover:underline">
+              Сайт
+            </Link>
+          </nav>
         </Container>
       </header>
       <Container wide className="py-8">
