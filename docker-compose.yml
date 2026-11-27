@@ -87,6 +87,23 @@ services:
       nats: { condition: service_started }
       catalog: { condition: service_healthy }
 
+  sales:
+    <<: *service
+    build: { <<: *service-build, args: { SERVICE: sales } }
+    environment:
+      <<: *service-env
+      PORT: 4106
+      DATABASE_URL: postgres://px:${POSTGRES_PASSWORD:-px}@postgres:5432/px_sales
+      PROJECTS_URL: http://projects:4102
+      PRODUCT_URLS: ${PRODUCT_URLS:-}
+      # WhatsApp and the AI seller are off locally unless configured.
+      GOWA_API_URL: ${GOWA_API_URL:-}
+      ANTHROPIC_API_KEY: ${SALES_ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_started }
+      projects: { condition: service_healthy }
+
   gateway:
     <<: *service
     build: { <<: *service-build, args: { SERVICE: gateway } }
@@ -95,12 +112,13 @@ services:
       PORT: 8080
       PROJECTS_URL: http://projects:4102
       MEDIA_URL: http://media:4104
+      SALES_URL: http://sales:4106
       CORS_ORIGINS: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
       # The frontend proxies browser calls and forwards the client IP.
       TRUST_PROXY: "true"
     ports: ["8080:8080"]
-    depends_on: [catalog, projects, payments, media]
+    depends_on: [catalog, projects, payments, media, sales]
 
   frontend:
     build: { context: ., dockerfile: frontend/Dockerfile }
