@@ -31,7 +31,7 @@ src/
     page.tsx               studio hub
     [brand]/               landing, /create, /p/[editKey] workspace, /invite/[inviteKey]
     pay/mock/[paymentId]   test checkout page of the mock payment provider
-    admin/                 orders list and order page
+    admin/                 studio CRM: dashboard, orders, customers, chats, settings
     api/[...path]/route.ts same-origin passthrough to the gateway (streams uploads)
   brands/                  per-brand presentation
     types.ts               BrandDefinition: logo, landing, chrome, copy
@@ -54,6 +54,23 @@ src/
   browser to same-origin `/api/*` via `shared/api/browser.ts`.
 - **Studio writes** use server actions (`features/admin/actions.ts`), so `ADMIN_TOKEN` never reaches the browser.
   `/api/admin/*` is blocked in the passthrough.
+
+### Studio CRM (`/admin`)
+
+| Route                       | What the team does there                                                    |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `/admin`                    | queues that need action today, month revenue, funnel, upcoming event dates  |
+| `/admin/orders`             | table or board by status; filters by status, product, design mode, search   |
+| `/admin/orders/[id]`        | answers, materials, layouts, payments, status change, team notes, history   |
+| `/admin/customers`          | customers grouped by phone: orders, revenue, last activity                  |
+| `/admin/chats`, `/settings` | sales chats (human handoff) and the Kaspi Pay cashier                       |
+
+Filters live in the URL (`?status=paid,printing&sort=deadline`), so every queue on the dashboard is
+a plain link and any view can be bookmarked. Code lives in `features/admin/`: `lib/` (status labels,
+formatting, query parsing), `ui/` (table, panel, badges: neutral, dense, no brand styling), then one
+folder per screen. The admin area has its own tokens under `[data-area='admin']` in `globals.css`.
+Numbers come from `GET /api/admin/stats` and `/api/admin/customers` (SQL aggregates in the projects
+service, `infrastructure/back-office-queries.ts`). Month revenue counts payments of orders created that month.
 
 ### Questionnaires
 

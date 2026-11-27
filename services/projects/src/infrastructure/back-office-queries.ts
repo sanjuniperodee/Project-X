@@ -1,6 +1,7 @@
 import {
   PROJECT_STATUSES_ACTIVE,
   PROJECT_STATUSES_PAID,
+  ProjectStatus,
   type AdminProjectPage,
   type AdminProjectQuery,
   type AdminStats,
@@ -8,7 +9,6 @@ import {
   type ProductId,
   type ProjectListItem,
   type ProjectNote,
-  type ProjectStatus,
 } from '@px/contracts';
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { BackOfficeQueries } from '../application/ports';
@@ -145,7 +145,8 @@ export class DrizzleBackOfficeQueries implements BackOfficeQueries {
         toShip: t.toShip,
         deadlineSoon: t.deadlineSoon,
       },
-      byStatus: Object.fromEntries(byStatusRows.map((r) => [r.status, r.value])) as AdminStats['byStatus'],
+      // Every status is present, with zero when there are no orders in it.
+      byStatus: Object.fromEntries(ProjectStatus.options.map((status) => [status, byStatusRows.find((r) => r.status === status)?.value ?? 0])) as AdminStats['byStatus'],
       byProduct: byProductRows.map((r) => ({ productId: r.productId as ProductId, orders: r.orders, paidOrders: r.paidOrders, revenue: r.revenue })),
       month: { orders: t.monthOrders, revenue: t.monthRevenue },
       previousMonth: { orders: t.prevOrders, revenue: t.prevRevenue },

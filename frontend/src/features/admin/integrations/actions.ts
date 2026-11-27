@@ -22,7 +22,7 @@ export async function connectKaspi(prev: KaspiFormState, form: FormData): Promis
       return { step: 'code', processId, error: null, done: false };
     }
     await api.admin.kaspi.verify(prev.processId ?? '', String(form.get('otp') ?? ''));
-    revalidatePath('/admin/integrations');
+    revalidatePath('/admin/settings');
     return { step: 'phone', processId: null, error: null, done: true };
   } catch (error) {
     return { ...prev, error: message(error, 'Kaspi не ответил. Попробуйте ещё раз.'), done: false };
@@ -31,7 +31,7 @@ export async function connectKaspi(prev: KaspiFormState, form: FormData): Promis
 
 export async function disconnectKaspi() {
   await api.admin.kaspi.disconnect();
-  revalidatePath('/admin/integrations');
+  revalidatePath('/admin/settings');
 }
 
 export interface QrState {
@@ -52,7 +52,7 @@ export async function whatsappQr(): Promise<QrState> {
 
 export async function whatsappLogout() {
   await api.admin.whatsapp.logout();
-  revalidatePath('/admin/integrations');
+  revalidatePath('/admin/settings');
 }
 
 export interface TrialState {

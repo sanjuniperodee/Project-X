@@ -1,35 +1,16 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { AdminShell } from '@/features/admin/shell/admin-shell';
+import { api } from '@/shared/api/server';
 import { SITE } from '@/shared/config/site';
-import { Container } from '@/shared/ui/container';
 
-export const metadata: Metadata = { title: `Заказы — ${SITE.name}`, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: `Студия — ${SITE.name}`, robots: { index: false, follow: false } };
+export const dynamic = 'force-dynamic';
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-dvh">
-      <header className="border-b border-line bg-surface">
-        <Container wide className="flex h-16 items-center justify-between">
-          <Link href="/admin" className="font-semibold">
-            {SITE.name}: заказы
-          </Link>
-          <nav className="flex items-center gap-5 text-sm text-muted">
-            <Link href="/admin/chats" className="underline-offset-4 hover:underline">
-              Чаты
-            </Link>
-            <Link href="/admin/integrations" className="underline-offset-4 hover:underline">
-              Интеграции
-            </Link>
-            <Link href="/" className="underline-offset-4 hover:underline">
-              Сайт
-            </Link>
-          </nav>
-        </Container>
-      </header>
-      <Container wide className="py-8">
-        {children}
-      </Container>
-    </div>
-  );
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  // Counters in the sidebar; a section that cannot be reached shows none rather than breaking the page.
+  const [stats, chats] = await Promise.all([api.admin.stats().catch(() => null), api.admin.conversations.list().catch(() => [])]);
+  const a = stats?.attention;
+  const attention = a ? a.unpaid + a.handoff + a.toPrint + a.toShip + a.deadlineSoon : 0;
+  return <AdminShell counts={{ attention, chats: chats.filter((c) => c.mode === 'human').length }}>{children}</AdminShell>;
 }

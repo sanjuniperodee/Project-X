@@ -186,3 +186,28 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Studio back office: neutral, dense, built for long working sessions.
+ * Re-maps the shared tokens so buttons and fields from shared/ui fit in.
+ */
+[data-area='admin'] {
+  --c-bg: #f5f5f6;
+  --c-surface: #ffffff;
+  --c-ink: #18181b;
+  --c-muted: #71717a;
+  --c-line: #e4e4e7;
+  --c-field: #ffffff;
+  --c-accent: #18181b;
+  --c-accent-ink: #ffffff;
+  --c-danger: #b91c1c;
+  --c-success: #15803d;
+  --f-display: var(--font-onest);
+  --f-body: var(--font-onest);
+  --r-control: 6px;
+  --r-card: 8px;
+  --btn-shadow: none;
+  --btn-border: transparent;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}

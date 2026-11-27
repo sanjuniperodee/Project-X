@@ -1,4 +1,4 @@
-import { Product, type CreatePaymentRequest, type PaymentView, type ProductInput } from '@px/contracts';
+import { AdminStats, Product, type CreatePaymentRequest, type PaymentView, type ProductInput } from '@px/contracts';
 import { createEnvelope } from '@px/service-kit';
 import { InMemoryEventBus } from '@px/service-kit/testing';
 import { sql } from 'drizzle-orm';
@@ -244,8 +244,8 @@ describe('studio back office', () => {
   });
 
   it('counts the dashboard numbers', async () => {
-    const stats = (await http('GET', '/admin/stats')).json();
-    expect(stats.byStatus).toMatchObject({ paid: 1, draft: 2 });
+    const stats = AdminStats.parse((await http('GET', '/admin/stats')).json());
+    expect(stats.byStatus).toMatchObject({ paid: 1, draft: 2, cancelled: 0 });
     expect(stats.byProduct).toEqual([{ productId: 'glossy', orders: 3, paidOrders: 1, revenue: 35_000 }]);
     expect(stats.attention.toPrint).toBe(1);
     expect(stats.attention.deadlineSoon).toBeGreaterThanOrEqual(0);

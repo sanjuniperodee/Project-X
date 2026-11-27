@@ -1,6 +1,10 @@
 import 'server-only';
 import {
+  AdminProjectPage,
   AdminProjectView,
+  AdminStats,
+  CustomerPage,
+  PaymentList,
   ConversationList,
   ConversationView,
   SellerTrialResponse,
@@ -12,12 +16,12 @@ import {
   PaymentView,
   Product,
   ProductSummary,
-  ProjectList,
   ProjectView,
   z,
+  type AddNoteRequest,
+  type AdminProjectQuery,
   type ChangeStatusRequest,
   type ProductId,
-  type ProjectStatus,
 } from '@px/contracts';
 import { env } from '../config/env';
 import { request, type ApiRequestInit } from './core';
@@ -28,6 +32,13 @@ const adminHeaders = (): Record<string, string> => {
   if (!env.ADMIN_TOKEN) throw new Error('ADMIN_TOKEN is not configured');
   return { authorization: `Bearer ${env.ADMIN_TOKEN}` };
 };
+
+/** Query string from defined values only. */
+function toSearch(values: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '') search.set(key, String(value));
+  return search.toString();
+}
 
 const call = <S extends z.ZodType>(path: string, schema: S, init?: ApiRequestInit) => request(url(path), schema, init);
 
@@ -40,10 +51,14 @@ export const api = {
   payment: (paymentId: string) => call(`/payments/${encodeURIComponent(paymentId)}`, PaymentView),
 
   admin: {
-    projects: (status?: ProjectStatus) =>
-      call(`/admin/projects${status ? `?status=${status}` : ''}`, ProjectList, { headers: adminHeaders() }).then(
-        (r) => r.items,
-      ),
+    projects: (query: Partial<AdminProjectQuery>) =>
+      call(`/admin/projects?${toSearch({ ...query, status: query.status?.join(',') })}`, AdminProjectPage, { headers: adminHeaders() }),
+    stats: () => call('/admin/stats', AdminStats, { headers: adminHeaders() }),
+    customers: (query: { q?: string; limit?: number; offset?: number }) => call(`/admin/customers?${toSearch(query)}`, CustomerPage, { headers: adminHeaders() }),
+    payments: (projectId: string) =>
+      call(`/admin/payments?${toSearch({ projectId })}`, PaymentList, { headers: adminHeaders() }).then((r) => r.items),
+    addNote: (id: string, body: AddNoteRequest) =>
+      call(`/admin/projects/${encodeURIComponent(id)}/notes`, AdminProjectView, { method: 'POST', body, headers: adminHeaders() }),
     project: (id: string) => call(`/admin/projects/${encodeURIComponent(id)}`, AdminProjectView, { headers: adminHeaders() }),
     changeStatus: (id: string, body: ChangeStatusRequest) =>
       call(`/admin/projects/${encodeURIComponent(id)}/status`, AdminProjectView, {
