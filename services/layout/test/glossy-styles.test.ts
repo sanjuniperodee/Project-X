@@ -37,7 +37,7 @@ describe('Cover Me styles', () => {
     expect(doc.pages).toHaveLength(24);
     expect(doc.pages[0]!.kind).toBe('cover');
     expect(doc.pages.at(-1)!.kind).toBe('back');
-    expect(doc.template).toBe('glossy-magazine@4');
+    expect(doc.template).toBe('glossy-magazine@5');
   });
 
   it('sets each style in its own typefaces and colours', () => {

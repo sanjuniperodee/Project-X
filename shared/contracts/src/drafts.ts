@@ -30,6 +30,11 @@ export const MAGAZINE_RUBRICS = [
   'words',
   'photos',
   'horoscope',
+  'blitz',
+  'people',
+  'places',
+  'album',
+  'letter',
 ] as const;
 export const MagazineRubric = z.enum(MAGAZINE_RUBRICS);
 export type MagazineRubric = z.infer<typeof MagazineRubric>;

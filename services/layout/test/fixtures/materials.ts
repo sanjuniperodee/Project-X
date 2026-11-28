@@ -102,6 +102,68 @@ export function glossySource(): LayoutSource {
   };
 }
 
+/**
+ * Every question of the Cover Me questionnaire answered, as a customer who did everything would: the material
+ * a 36-page issue is planned for. Landscape photos have "land" in their id.
+ */
+export function glossyFullSource(): LayoutSource {
+  const base = glossySource();
+  const landscapes = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => photo(`${prefix}land${i}`));
+  return {
+    ...base,
+    formatId: 'a4-36',
+    answers: {
+      ...base.answers,
+      issue: { voice: 'warm', focus: 'balance', firstRubrics: [], skipRubrics: [] },
+      interview: {
+        ...base.answers.interview,
+        habits: 'Говорит «короче» перед самой длинной историей. Пьёт кофе стоя. Всем пишет голосовыми.',
+        turningPoint: 'В 2019 году её уволили из банка в пятницу, а в понедельник она уже искала помещение под кофейню. Говорит, что это было лучшее увольнение в её жизни.',
+        work: 'Начинала бариста на летней площадке у Арбата, потом пять лет в банке, а теперь у неё своя кофейня и команда из восьми человек.',
+        touches: 'Старые видео с мамой и бабушкой',
+        advice: 'Не бойся звонить первой и просить о помощи',
+      },
+      blitz: {
+        owlOrLark: 'Сова, которая притворяется жаворонком',
+        mountainsOrSea: 'Горы, и только Кольсай',
+        pockets: 'Наушники, гигиеничка и курт',
+        superpower: 'Находит общий язык с любой апашкой',
+        weakness: 'Опаздывает, но всегда с тортом',
+        dinnerGuest: 'С Димашем и своей прабабушкой',
+        karaoke: '«Ах, какая женщина»',
+        bestGift: 'Щенок на десятилетие',
+        happiness: 'Когда все свои за одним дастарханом',
+      },
+      rules: { rules: [{ text: 'Никогда не опаздывать на плов' }, { text: 'Говорить правду, даже когда неудобно' }, { text: 'Каждое лето — новые горы' }, { text: 'Семья важнее работы' }, { text: 'Кофе — только свежей обжарки' }] },
+      people: {
+        people: [
+          { name: 'Сауле', who: 'Мама', about: 'Каждое воскресенье — баурсаки и разговоры до ночи.', photo: [photo('pp0')] },
+          { name: 'Ерлан', who: 'Брат', about: 'Научил её ездить на велосипеде и чинить кофемашину.', photo: [photo('pp1')] },
+          { name: 'Әсел', who: 'Лучшая подруга', about: 'Вместе с первого курса и с первой палатки.', photo: [photo('pp2')] },
+          { name: 'Тимур', who: 'Муж', about: 'Первый гость её кофейни и до сих пор самый строгий критик.', photo: [photo('pp3')] },
+        ],
+      },
+      places: {
+        places: [
+          { name: 'Кольсайские озёра', story: 'Сюда она приезжает каждое лето, чтобы выключить телефон и пройти пешком до третьего озера.', photos: [photo('plland0'), photo('pl1')] },
+          { name: 'Кофейня «Дәм»', story: 'Её второе место жительства: здесь она встречает рассвет, гостей и новых друзей.', photos: [photo('pl2')] },
+          { name: 'Караганда, бабушкин двор', story: 'Двор, где она строила шалаши и командовала всеми мальчишками.', photos: [photo('pl3')] },
+        ],
+      },
+      photos: { cover: [photo('cover0'), photo('cover1')], childhood: photos('k', 5), gallery: [...photos('g', 24), ...landscapes('g', 4)] },
+      letter: {
+        text: 'Айгерим, этот журнал — маленькая часть того, что мы о тебе думаем. Ты научила нас не бояться начинать заново и всегда приходить с тортом.\n\nСпасибо, что ты есть. С днём рождения!',
+        signature: 'Твой Тимур',
+        photo: [photo('lt0')],
+      },
+    },
+    contributions: [
+      ...base.contributions,
+      { id: 'c3', authorName: 'Мадина', answers: { insight: { relation: 'Коллега по банку', oneWord: 'Солнце', story: 'В банке её знали как человека, который приносит кофе всем, даже охраннику. Когда она ушла, мы неделю пили растворимый и грустили.', wish: 'Пусть в кофейне всегда будет очередь!', photos: [photo('f3')] } }, createdAt: '2026-11-03T10:00:00.000Z' },
+    ],
+  };
+}
+
 export const glossyDraft = {
   title: 'Айгерим: женщина, которая не опаздывает на плов',
   lead: 'Этот номер мы собирали втайне. Друзья, брат и коллеги рассказали о ней то, что она никогда не расскажет сама.',

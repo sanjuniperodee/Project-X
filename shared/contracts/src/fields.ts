@@ -46,15 +46,30 @@ export const DateField = FieldBase.extend({
   role: z.enum(['eventDate']).optional(),
 });
 
+/**
+ * What a select/choice answer means beyond the form. `textTone`: the voice of the texts the editors
+ * (and the AI) write for this order; its option labels and descriptions are the brief.
+ */
+export const ChoiceRole = z.enum(['textTone']);
+export type ChoiceRole = z.infer<typeof ChoiceRole>;
+
 export const SelectField = FieldBase.extend({
   type: z.literal('select'),
   options: z.array(Option).min(1),
+  role: ChoiceRole.optional(),
 });
 
 export const ChoiceField = FieldBase.extend({
   type: z.literal('choice'),
   options: z.array(Option).min(1),
   multiple: z.boolean().default(false),
+  /**
+   * Multiple choice where the order of the picks matters (e.g. the order of rubrics in a magazine):
+   * the answer keeps the options in the order they were picked. Forms should show the pick number
+   * next to each ticked option; forms that ignore the flag still append picks in click order.
+   */
+  ordered: z.boolean().default(false),
+  role: ChoiceRole.optional(),
 });
 
 export const PhotosField = FieldBase.extend({

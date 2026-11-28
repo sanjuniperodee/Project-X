@@ -28,7 +28,7 @@ for (const [name, product, source, draft] of cases) {
   const service = new LayoutService({
     projects: { layoutSource: async () => source },
     catalog: { product: async () => product },
-    media, images: imageProcessor, renderer, fonts,
+    media, images: imageProcessor, renderer, fonts, portraits: { silhouette: async () => null },
     bus: new InMemoryEventBus(), log: console as never, tmpDir: out, thumbnailSize: 640,
   });
   const started = Date.now();

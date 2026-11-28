@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateQuote, canTransition, formatTenge, QuoteError, validateStep, type WizardStep } from '../src';
+import { calculateQuote, canTransition, formatTenge, QuoteError, textToneOf, validateStep, type WizardStep } from '../src';
 import { WizardStep as WizardStepSchema } from '../src';
 
 const product = {
@@ -71,4 +71,33 @@ describe('project lifecycle', () => {
 
 it('formats tenge', () => {
   expect(formatTenge(25000)).toBe('25 000 ₸');
+});
+
+describe('choice fields with a role and an order', () => {
+  const step = WizardStepSchema.parse({
+    id: 'issue',
+    title: 'Подача',
+    audience: 'owner',
+    fields: [
+      { id: 'voice', type: 'choice', role: 'textTone', label: 'Тон', options: [{ value: 'warm', label: 'Тёплый', description: 'С любовью' }] },
+      { id: 'order', type: 'choice', multiple: true, ordered: true, label: 'Порядок', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] },
+      { id: 'plain', type: 'choice', label: 'Старое поле', options: [{ value: 'x', label: 'X' }] },
+    ],
+  });
+
+  it('stay backward compatible: fields without the new keys parse as before', () => {
+    const plain = step.fields[2]!;
+    expect(plain.type === 'choice' && plain.ordered).toBe(false);
+    expect(plain.type === 'choice' ? plain.role : 'not a choice').toBeUndefined();
+  });
+
+  it('keep the order of the picks', () => {
+    const result = validateStep(step, { order: ['b', 'a'] }, 'draft');
+    expect(result.ok && result.data.order).toEqual(['b', 'a']);
+  });
+
+  it('give the chosen tone with its description, or nothing', () => {
+    expect(textToneOf({ steps: [step] }, { issue: { voice: 'warm' } })).toEqual({ label: 'Тёплый', description: 'С любовью' });
+    expect(textToneOf({ steps: [step] }, { issue: {} })).toBeUndefined();
+  });
 });

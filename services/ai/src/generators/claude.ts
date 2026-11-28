@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { DraftContent, MAGAZINE_RUBRICS } from '@px/contracts';
+import { DraftContent, MAGAZINE_RUBRICS, textToneOf } from '@px/contracts';
 import { describeProject } from '../prompts/describe';
-import { PRODUCT_INSTRUCTIONS, revisionBrief, SYSTEM_PROMPT } from '../prompts/instructions';
+import { PRODUCT_INSTRUCTIONS, revisionBrief, SYSTEM_PROMPT, toneBrief } from '../prompts/instructions';
 import type { DraftGenerator, DraftRequest } from './generator';
 
 /** JSON schema for structured outputs; mirrors the DraftContent contract. */
@@ -79,7 +79,7 @@ export class ClaudeDraftGenerator implements DraftGenerator {
       messages: [
         {
           role: 'user',
-          content: `${PRODUCT_INSTRUCTIONS[request.product.id]}\n\n<materials>\n${describeProject(request)}\n</materials>${request.revision ? revisionBrief(request.revision) : ''}`,
+          content: draftPrompt(request),
         },
       ],
     });
@@ -94,4 +94,11 @@ export class ClaudeDraftGenerator implements DraftGenerator {
     if (!text || text.type !== 'text') throw new Error('Model returned no text block');
     return DraftContent.parse(JSON.parse(text.text));
   }
+}
+
+/** The user message: the product brief, the materials, the chosen tone and, for revisions, the previous draft. */
+export function draftPrompt(request: DraftRequest): string {
+  const tone = textToneOf(request.product, request.project.answers);
+  const revision = request.revision ? revisionBrief(request.revision, tone) : '';
+  return `${PRODUCT_INSTRUCTIONS[request.product.id]}\n\n<materials>\n${describeProject(request)}\n</materials>${toneBrief(tone)}${revision}`;
 }

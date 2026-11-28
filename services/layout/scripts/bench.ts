@@ -64,7 +64,7 @@ const dir = await mkdtemp(path.join(tmpdir(), 'px-bench-'));
 const service = new LayoutService({
   projects: { layoutSource: async () => source },
   catalog: { product: async () => f.products.glossy },
-  media, images: imageProcessor, renderer: createRenderer(fonts), fonts,
+  media, images: imageProcessor, renderer: createRenderer(fonts), fonts, portraits: { silhouette: async () => null },
   bus: new InMemoryEventBus(), log: console as never, tmpDir: dir, thumbnailSize: 640,
 });
 const started = Date.now();

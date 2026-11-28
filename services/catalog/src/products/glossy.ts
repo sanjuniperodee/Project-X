@@ -1,5 +1,22 @@
 import type { ProductInput } from '@px/contracts';
 
+/** Rubrics the customer can move to the front of the issue or leave out (ids the layout template knows). */
+const RUBRICS = [
+  { value: 'interview', label: 'Большое интервью' },
+  { value: 'dossier', label: 'Досье' },
+  { value: 'blitz', label: 'Блиц' },
+  { value: 'tastes', label: 'Любимое' },
+  { value: 'timeline', label: 'Хронология' },
+  { value: 'numbers', label: 'В цифрах' },
+  { value: 'thenNow', label: 'Тогда и сейчас' },
+  { value: 'people', label: 'Близкий круг' },
+  { value: 'places', label: 'Места силы' },
+  { value: 'rules', label: 'Правила жизни' },
+  { value: 'friends', label: 'Говорят друзья' },
+  { value: 'photos', label: 'Фотосессия' },
+  { value: 'letter', label: 'Письмо герою' },
+];
+
 /**
  * Cover Me — a personal glossy magazine about one person, a couple or a company.
  * Edit prices, formats and questions here; the frontend and validation follow automatically.
@@ -22,7 +39,7 @@ export const glossy: ProductInput = {
     {
       id: 'a4-36',
       name: 'Журнал на 36 страниц',
-      description: 'Все рубрики, но просторнее: у каждого друга своя страница и большая фотосессия.',
+      description: 'Все рубрики, но просторнее: у каждого друга своя страница, блиц, близкий круг, места силы и большая фотосессия.',
       price: 35_000,
       recommended: true,
       specs: ['Формат A4', 'Мелованная бумага 170 г/м²', 'Обложка soft-touch', 'До 70 фотографий', 'Своя страница каждому другу'],
@@ -87,7 +104,7 @@ export const glossy: ProductInput = {
           id: 'tone',
           type: 'choice',
           label: 'Стиль номера',
-          hint: 'От него зависит всё оформление: шрифты, цвета, обложка и голос текстов.',
+          hint: 'От него зависит оформление: шрифты, цвета и обложка. Тон текстов выберете на следующем шаге.',
           required: true,
           options: [
             { value: 'vogue', label: 'Глянец', description: 'Чёрно-белая классика, крупные портреты, цвет номера — из фото обложки' },
@@ -95,6 +112,54 @@ export const glossy: ProductInput = {
             { value: 'tender', label: 'Нежность', description: 'Пудровые тона, курсив, много воздуха и круглые портреты' },
             { value: 'noir', label: 'Нуар', description: 'Чёрные страницы, золото и кино — для юбилеев и мужчин' },
           ],
+        },
+      ],
+    },
+    {
+      id: 'issue',
+      title: 'Подача номера',
+      description: 'Каким голосом писать и как собрать номер. Можно пропустить — редакция решит сама.',
+      audience: 'owner',
+      fields: [
+        {
+          id: 'voice',
+          type: 'choice',
+          role: 'textTone',
+          label: 'Тон текстов',
+          hint: 'Так редактор напишет письмо, интервью, заголовки рубрик и выносы на обложке.',
+          options: [
+            { value: 'warm', label: 'Тёплый и трогательный', description: 'С любовью и благодарностью — чтобы герой улыбнулся и немного прослезился' },
+            { value: 'humor', label: 'С юмором и самоиронией', description: 'Смешно и по-доброму: подколки, которые герой оценит первым' },
+            { value: 'glossy', label: 'Как в настоящем глянце', description: 'Хлёсткие заголовки, уверенный тон, герой — звезда с обложки' },
+            { value: 'elegant', label: 'Сдержанный и элегантный', description: 'Коротко, спокойно, без восклицаний — для юбилеев и солидных героев' },
+          ],
+        },
+        {
+          id: 'focus',
+          type: 'choice',
+          label: 'Чего в номере больше',
+          options: [
+            { value: 'balance', label: 'Поровну', description: 'Истории и фото чередуются' },
+            { value: 'photos', label: 'Больше фото', description: 'Фото крупнее, есть развороты, фотосессия сразу после интервью' },
+            { value: 'stories', label: 'Больше историй', description: 'Интервью и рассказы друзей просторнее, больше цитат героя' },
+          ],
+        },
+        {
+          id: 'firstRubrics',
+          type: 'choice',
+          multiple: true,
+          ordered: true,
+          label: 'С чего начать номер',
+          hint: 'Отметьте рубрики в том порядке, в каком хотите их читать. Остальные встанут следом.',
+          options: RUBRICS,
+        },
+        {
+          id: 'skipRubrics',
+          type: 'choice',
+          multiple: true,
+          label: 'Без каких рубрик обойтись',
+          hint: 'Отмеченных рубрик не будет в номере, даже если вы ответили на их вопросы.',
+          options: [...RUBRICS.filter((r) => r.value !== 'interview'), { value: 'horoscope', label: 'Гороскоп' }],
         },
       ],
     },
@@ -122,7 +187,28 @@ export const glossy: ProductInput = {
         { id: 'habits', type: 'textarea', label: 'Привычки, словечки и странности', rows: 4 },
         { id: 'childhood', type: 'textarea', label: 'Каким героем был в детстве', rows: 3 },
         { id: 'lesson', type: 'textarea', label: 'Главное, чему научила жизнь', rows: 3 },
+        { id: 'turningPoint', type: 'textarea', label: 'Момент, который всё изменил', hint: 'Переезд, встреча, решение — после чего жизнь пошла иначе.', rows: 3 },
+        { id: 'work', type: 'textarea', label: 'Как герой пришёл к своему делу', hint: 'Первая работа, главный поворот, чем занят сейчас.', rows: 3 },
+        { id: 'touches', type: 'text', label: 'Что может растрогать героя', placeholder: 'Старые видео с мамой', maxLength: 200 },
+        { id: 'advice', type: 'text', label: 'Совет, который герой дал бы себе в 18 лет', placeholder: 'Не бойся звонить первой', maxLength: 200 },
         { id: 'dream', type: 'text', label: 'О чём мечтает', maxLength: 300 },
+      ],
+    },
+    {
+      id: 'blitz',
+      title: 'Блиц',
+      description: 'Короткие ответы за героя, как в блиц-опросе журнала. Пропускайте то, чего не знаете.',
+      audience: 'owner',
+      fields: [
+        { id: 'owlOrLark', type: 'text', label: 'Сова или жаворонок', placeholder: 'Сова, которая притворяется жаворонком', maxLength: 80 },
+        { id: 'mountainsOrSea', type: 'text', label: 'Горы или море', placeholder: 'Горы, и только Кольсай', maxLength: 80 },
+        { id: 'pockets', type: 'text', label: 'Что всегда в сумке или карманах', placeholder: 'Наушники, гигиеничка и курт', maxLength: 100 },
+        { id: 'superpower', type: 'text', label: 'Суперсила', placeholder: 'Находит общий язык с любой апашкой', maxLength: 100 },
+        { id: 'weakness', type: 'text', label: 'Слабость, которую все прощают', placeholder: 'Опаздывает, но всегда с тортом', maxLength: 100 },
+        { id: 'dinnerGuest', type: 'text', label: 'С кем мечтает поужинать', placeholder: 'С Димашем и своей прабабушкой', maxLength: 100 },
+        { id: 'karaoke', type: 'text', label: 'Песня в караоке', placeholder: '«Ах, какая женщина»', maxLength: 80 },
+        { id: 'bestGift', type: 'text', label: 'Лучший подарок в жизни', placeholder: 'Щенок на десятилетие', maxLength: 100 },
+        { id: 'happiness', type: 'text', label: 'Счастье — это…', placeholder: 'Когда все свои за одним дастарханом', maxLength: 140 },
       ],
     },
     {
@@ -198,6 +284,49 @@ export const glossy: ProductInput = {
       ],
     },
     {
+      id: 'people',
+      title: 'Близкий круг',
+      description: 'Люди, без которых героя не представить: семья, вторая половинка, лучшие друзья. Каждому — фото и пара слов.',
+      audience: 'owner',
+      fields: [
+        {
+          id: 'people',
+          type: 'list',
+          label: 'Люди',
+          itemLabel: 'Человек',
+          addLabel: 'Добавить человека',
+          max: 8,
+          fields: [
+            { id: 'name', type: 'text', label: 'Имя', placeholder: 'Сауле', required: true, maxLength: 60 },
+            { id: 'who', type: 'text', label: 'Кем приходится герою', placeholder: 'Мама', maxLength: 60 },
+            { id: 'about', type: 'textarea', label: 'Что их связывает', placeholder: 'Каждое воскресенье — баурсаки и разговоры до ночи', rows: 2, maxLength: 300 },
+            { id: 'photo', type: 'photos', label: 'Фото вместе или портрет', max: 1 },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'places',
+      title: 'Места силы',
+      description: 'Города, горы, кофейни — места, где герой становится собой. Из них получится страница-путешествие.',
+      audience: 'owner',
+      fields: [
+        {
+          id: 'places',
+          type: 'list',
+          label: 'Места',
+          itemLabel: 'Место',
+          addLabel: 'Добавить место',
+          max: 6,
+          fields: [
+            { id: 'name', type: 'text', label: 'Место', placeholder: 'Кольсайские озёра', required: true, maxLength: 80 },
+            { id: 'story', type: 'textarea', label: 'Чем оно дорого', rows: 3, maxLength: 500 },
+            { id: 'photos', type: 'photos', label: 'Фото оттуда', max: 2 },
+          ],
+        },
+      ],
+    },
+    {
       id: 'photos',
       title: 'Фотографии',
       description: 'Для обложки нужен портрет хорошего качества, остальные — любые.',
@@ -211,8 +340,19 @@ export const glossy: ProductInput = {
           required: true,
           max: 3,
         },
-        { id: 'childhood', type: 'photos', label: 'Детские фото', hint: 'Для рубрики «Тогда и сейчас».', max: 12 },
+        { id: 'childhood', type: 'photos', label: 'Детские фото', hint: 'Для рубрик «Тогда и сейчас» и «Семейный альбом».', max: 12 },
         { id: 'gallery', type: 'photos', label: 'Фото для разворотов', hint: 'Чем больше хороших кадров, тем богаче номер.', max: 70 },
+      ],
+    },
+    {
+      id: 'letter',
+      title: 'Письмо герою',
+      description: 'Ваш личный текст закроет номер. Пишите от себя — как в открытке, только честнее.',
+      audience: 'owner',
+      fields: [
+        { id: 'text', type: 'textarea', label: 'Что вы хотите сказать герою', rows: 6, maxLength: 2500 },
+        { id: 'signature', type: 'text', label: 'Подпись', placeholder: 'Твоя Мадина', maxLength: 80 },
+        { id: 'photo', type: 'photos', label: 'Фото к письму', hint: 'Ваше общее фото или любимый портрет героя.', max: 1 },
       ],
     },
     {

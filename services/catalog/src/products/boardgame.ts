@@ -83,6 +83,7 @@ export const boardgame: ProductInput = {
         {
           id: 'tone',
           type: 'choice',
+          role: 'textTone',
           label: 'Градус игры',
           required: true,
           options: [

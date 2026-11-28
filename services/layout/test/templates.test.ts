@@ -1,8 +1,9 @@
-import type { LayoutSource } from '@px/contracts';
+import { templateDraft, type LayoutSource } from '@px/contracts';
 import { describe, expect, it } from 'vitest';
 import { BLEED } from '../src/domain/document';
 import { FontLibrary } from '../src/infrastructure/fonts';
 import { TEMPLATES, type PhotoLibrary } from '../src/templates';
+import { DEFAULT_ORDER } from '../src/templates/glossy-plan';
 import * as f from './fixtures/materials';
 
 const fonts = new FontLibrary();
@@ -44,8 +45,11 @@ describe('Cover Me', () => {
     expect(texts(doc, 'article')).not.toContain('Инсайды от друзей');
   });
 
-  it('places every photo inside the page or its bleed, each photo once', () => {
-    const doc = build(f.glossySource(), f.glossyDraft);
+  it.each([
+    ['answers of the fixture', () => f.glossySource()],
+    ['every answer', () => f.glossyFullSource()],
+  ])('places every photo inside the page or its bleed, each photo once (%s)', (_, source) => {
+    const doc = build(source(), f.glossyDraft);
     const images = elements(doc, 'image') as Array<{ photo: { key: string }; box: { x: number; y: number; w: number; h: number } }>;
     for (const page of doc.pages) {
       for (const e of page.elements) {
@@ -57,8 +61,9 @@ describe('Cover Me', () => {
       }
     }
     // The editor's letter repeats the cover portrait in a circle; nothing else repeats.
+    // A spread draws its photo on both facing pages: counted once.
     const keys = doc.pages
-      .filter((p) => p.kind !== 'letter')
+      .filter((p, i) => p.kind !== 'letter' && !(p.kind === 'spread' && doc.pages[i - 1]?.kind === 'spread' && i % 2 === 0))
       .flatMap((p) => p.elements)
       .filter((e) => e.type === 'image')
       .map((e) => (e as { photo: { key: string } }).photo.key);
@@ -110,7 +115,16 @@ describe('Cover Me', () => {
     expect(doc.pages).toHaveLength(24);
     expect(doc.pages[0]!.kind).toBe('cover');
     expect(doc.pages.at(-1)!.kind).toBe('back');
-    expect(doc.warnings.join(' ')).toMatch(/Материалов мало/);
+    // The interview comes straight from the answers, and the three words become a manifesto page.
+    expect(texts(doc, 'article').join(' ')).toContain('торт на сто человек');
+    expect(doc.pages.map((p) => p.kind)).toContain('manifesto');
+    // Only this little material leaves guest pages, and the customer is told what to add, piece by piece.
+    const warnings = doc.warnings.join('\n');
+    expect(warnings).toMatch(/Не хватает материалов на \d+ страниц/);
+    expect(doc.warnings).toContain('Нет фото для разворотов «Фотосессии»: добавьте 6–10 фото');
+    expect(doc.warnings).toContain('Пустой раздел «Правила жизни»: добавьте 3–5 правил героя');
+    expect(doc.warnings).toContain('Пустой раздел «Хронология»: добавьте 3–5 событий с годами');
+    expect(warnings).not.toMatch(/шаблон|template|undefined/i);
   });
 
   it('gives every friend a page of their own when a 36-page issue has room', () => {
@@ -118,6 +132,107 @@ describe('Cover Me', () => {
     expect(doc.pages).toHaveLength(36);
     const friendPages = doc.pages.filter((p) => p.kind === 'friends');
     expect(friendPages).toHaveLength(f.glossySource().contributions.length);
+  });
+});
+
+describe('Cover Me: filling the format', () => {
+  const kinds = (doc: ReturnType<typeof build>) => doc.pages.map((p) => p.kind);
+  /** No friends, seven photos: real material, but short of 24 pages. */
+  const sparse = (): LayoutSource => {
+    const base = f.glossySource();
+    const gallery = Array.from({ length: 6 }, (_, i) => ({ id: `s${i}`, url: `/api/media/files/s${i}.jpg` }));
+    return { ...base, contributions: [], answers: { ...base.answers, photos: { cover: [{ id: 'c0', url: '/api/media/files/c0.jpg' }], gallery } } };
+  };
+
+  it('fills a sparse 24-page issue with its own material, without guest pages', () => {
+    const doc = build(sparse(), f.glossyDraft);
+    expect(doc.pages).toHaveLength(24);
+    expect(kinds(doc)).not.toContain('wishes');
+    // More room for what there is: rules one per page, the hero's words as full-page quotes.
+    expect(kinds(doc).filter((k) => k === 'rules').length).toBe(3);
+    expect(kinds(doc)).toContain('quote');
+    // Never two posters in a row.
+    const poster = (k: string) => k === 'quote' || k === 'manifesto';
+    kinds(doc).forEach((k, i, all) => expect(poster(k) && poster(all[i + 1] ?? '')).toBe(false));
+    // And the customer learns what would make the issue fuller.
+    expect(doc.warnings).toContain('Пустой раздел «Близкий круг»: добавьте 2–4 человек с фото');
+    expect(doc.warnings).toContain('Нет письма герою: напишите пару абзацев от себя — ими закончится номер');
+  });
+
+  it('lays out every answer of the full questionnaire on 36 pages, with nothing made up', () => {
+    const doc = build(f.glossyFullSource(), f.glossyDraft);
+    expect(doc.pages).toHaveLength(36);
+    expect(doc.warnings).toEqual([]);
+    for (const kind of ['blitz', 'album', 'people', 'places', 'hero-letter']) expect(kinds(doc)).toContain(kind);
+    for (const kind of ['wishes', 'quote', 'manifesto']) expect(kinds(doc)).not.toContain(kind);
+    expect(texts(doc, 'blitz').join(' ')).toContain('Сова, которая притворяется');
+    expect(texts(doc, 'people').join(' ')).toContain('Сауле');
+    expect(texts(doc, 'places').join(' ')).toContain('Кольсайские озёра');
+    expect(texts(doc, 'hero-letter').join(' ')).toContain('Твой Тимур');
+    // The customer's letter closes the issue.
+    expect(kinds(doc).at(-2)).toBe('hero-letter');
+    expect(doc.pages.filter((p) => p.kind === 'friends')).toHaveLength(3);
+  });
+
+  it('sets the new interview answers in the preview made from the answers', () => {
+    const source = f.glossyFullSource();
+    const draft = { ...templateDraft({ product: f.products.glossy, subject: 'Айгерим', answers: source.answers, contributions: source.contributions }), generator: 'preview', generatedAt: '2026-11-20T10:00:00.000Z' };
+    const doc = build(source, draft);
+    expect(doc.pages).toHaveLength(36);
+    const article = texts(doc, 'article').join(' ');
+    expect(article).toContain('Момент, который всё изменил');
+    expect(article).toContain('лучшее увольнение');
+    expect(article).not.toContain('Тон текстов');
+    // The editor's letter is written from the answers, not left empty.
+    expect(texts(doc, 'letter').join(' ')).toContain('Этот номер — о человеке по имени Айгерим');
+  });
+
+  it('keeps 24 pages for the full questionnaire and names what did not fit', () => {
+    const doc = build({ ...f.glossyFullSource(), formatId: 'a4-24' }, f.glossyDraft);
+    expect(doc.pages).toHaveLength(24);
+    expect(doc.warnings.join(' ')).toMatch(/^Не поместилось в 24 страницы: «.+». Войд(ёт|ут), если выбрать журнал на 36 страниц/);
+    expect(kinds(doc)).toContain('hero-letter');
+  });
+
+  it('follows the customer’s arrangement: focus, first rubrics and skipped ones', () => {
+    const full = f.glossyFullSource();
+    const photosFirst = build({ ...full, answers: { ...full.answers, issue: { focus: 'photos' } } }, f.glossyDraft);
+    expect(kinds(photosFirst).lastIndexOf('article') + 1).toBe(kinds(photosFirst).indexOf('photos'));
+
+    const arranged = build({ ...full, answers: { ...full.answers, issue: { firstRubrics: ['friends', 'timeline'], skipRubrics: ['blitz', 'numbers'] } } }, f.glossyDraft);
+    expect(arranged.pages).toHaveLength(36);
+    const order = kinds(arranged);
+    expect(order[3]).toBe('friends');
+    expect(order.indexOf('timeline')).toBeLessThan(order.indexOf('dossier'));
+    expect(order).not.toContain('blitz');
+    expect(order).not.toContain('numbers');
+    // Skipped rubrics are the customer's choice, not a gap to report.
+    expect(arranged.warnings.join(' ')).not.toMatch(/Блиц|В цифрах/);
+  });
+
+  it('runs landscape photos across facing pages when there is room for them', () => {
+    const base = sparse();
+    const gallery = Array.from({ length: 10 }, (_, i) => ({ id: i % 3 === 0 ? `land${i}` : `p${i}`, url: `/api/media/files/x${i}.jpg` }));
+    const doc = build({ ...base, answers: { ...base.answers, issue: { focus: 'photos' }, photos: { cover: [{ id: 'c0', url: '/api/media/files/c0.jpg' }], gallery } } }, f.glossyDraft);
+    expect(doc.pages).toHaveLength(24);
+    const spreads = doc.pages.flatMap((p, i) => (p.kind === 'spread' ? [i + 1] : []));
+    expect(spreads.length).toBeGreaterThan(0);
+    for (let i = 0; i < spreads.length; i += 2) {
+      // A left-hand (even) page and the right-hand page next to it, the same photo on both.
+      expect(spreads[i]! % 2).toBe(0);
+      expect(spreads[i + 1]).toBe(spreads[i]! + 1);
+      const key = (n: number) => (doc.pages[n - 1]!.elements.find((e) => e.type === 'image') as { photo: { key: string } }).photo.key;
+      expect(key(spreads[i]!)).toBe(key(spreads[i + 1]!));
+    }
+  });
+
+  it('knows every rubric the questionnaire offers', () => {
+    const issue = f.products.glossy.steps.find((s) => s.id === 'issue')!;
+    for (const id of ['firstRubrics', 'skipRubrics']) {
+      const field = issue.fields.find((x) => x.id === id)!;
+      if (field.type !== 'choice') throw new Error('choice expected');
+      for (const option of field.options) expect([...DEFAULT_ORDER, 'horoscope']).toContain(option.value);
+    }
   });
 });
 

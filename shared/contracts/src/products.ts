@@ -119,3 +119,24 @@ export function ownerSteps(product: Pick<Product, 'steps'>) {
 export function contributorSteps(product: Pick<Product, 'steps'>) {
   return product.steps.filter((s) => s.audience === 'contributor');
 }
+
+/**
+ * The tone of the texts the customer chose (the owner-step choice/select field with role `textTone`),
+ * as the option the customer saw: label and description. Undefined when the product has no such
+ * question or it was left empty.
+ */
+export function textToneOf(
+  product: Pick<Product, 'steps'>,
+  answers: Record<string, Record<string, unknown> | undefined>,
+): { label: string; description: string } | undefined {
+  for (const step of ownerSteps(product)) {
+    for (const field of step.fields) {
+      if ((field.type !== 'choice' && field.type !== 'select') || field.role !== 'textTone') continue;
+      const raw = answers[step.id]?.[field.id];
+      const value = Array.isArray(raw) ? raw[0] : raw;
+      const option = field.options.find((o) => o.value === value);
+      if (option) return { label: option.label, description: option.description ?? '' };
+    }
+  }
+  return undefined;
+}
