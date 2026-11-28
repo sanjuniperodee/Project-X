@@ -238,7 +238,7 @@ function buildMagazine(input: TemplateInput, metrics: FontMetrics, target: numbe
   }
 
   // 15. Back cover
-  backCover(c, s, issue, m.text('favorites', 'phrase'), input.draft.cards.at(-1)?.title);
+  backCover(c, s, issue, m.text('favorites', 'phrase'), input.draft.cards.at(-1)?.title, input.source.issueUrl);
 
   fillContents(c, s, contentsPage, issue, contents);
   return { composer: c, corePages, title, spareGuestPages: Math.max(0, guestBookCount - guestPages) };

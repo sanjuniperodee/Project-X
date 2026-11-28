@@ -132,6 +132,8 @@ describe('automatic layout', () => {
       nextVersion: 1,
       answers: { hero: { name: 'Айгерим' } },
     });
+    // The online issue goes on the back cover as a QR code.
+    expect(res.json().issueUrl).toMatch(/^http:\/\/localhost:3000\/glossy\/issue\/[A-Za-z0-9_-]{10,}$/);
     expect((await http('GET', '/internal/projects/00000000-0000-4000-8000-000000000000/layout-source')).statusCode).toBe(404);
   });
 
@@ -155,6 +157,11 @@ describe('automatic layout', () => {
     expect(early.statusCode).toBe(409);
     expect(early.json().error.message).toMatch(/согласуйте макет/);
 
+    // The online issue stays closed until the approved layout is paid for.
+    const inviteKey = project.inviteKey as string;
+    const issue = async () => (await http('GET', `/invites/${inviteKey}/issue`)).json();
+    expect(await issue()).toMatchObject({ productId: 'glossy', subject: 'Айгерим', ready: false, pages: [] });
+
     // A decision about another version is refused.
     expect((await http('POST', `/projects/${editKey}/layout/approve`, { version: 2 })).statusCode).toBe(409);
 
@@ -172,6 +179,8 @@ describe('automatic layout', () => {
     await settle();
     project = await view(editKey);
     expect(project.status).toBe('paid');
+    expect(await issue()).toMatchObject({ ready: true, pages: [{ number: 1, kind: 'cover' }] });
+    expect((await http('GET', '/invites/unknown-invite-key/issue')).statusCode).toBe(404);
 
     const admin = (await http('GET', `/admin/projects/${id}`)).json();
     expect(admin.layouts).toHaveLength(1);

@@ -5,6 +5,7 @@ import {
   type AdminStats,
   type CustomerPage,
   calculateQuote,
+  PROJECT_STATUSES_PAID,
   contributorSteps,
   ownerSteps,
   QuoteError,
@@ -16,6 +17,7 @@ import {
   type CreateProjectResponse,
   type EventEnvelope,
   type InviteView,
+  type IssueView,
   type LayoutSource,
   type LayoutView,
   type PaymentKind,
@@ -56,6 +58,8 @@ export interface ProjectServiceDeps {
   payments: PaymentsGateway;
   /** Absolute URL of the owner's workspace on the frontend. */
   workspaceUrl: (project: { productId: ProductId; editKey: string }) => string;
+  /** Absolute URL of the online issue (printed as a QR on the back cover). */
+  issueUrl: (project: { productId: ProductId; inviteKey: string }) => string;
   /** Automatic revision rounds before a project goes to a designer. */
   revisionsLimit: number;
 }
@@ -231,6 +235,22 @@ export class ProjectService {
 
   // ---------- Contributors ----------
 
+  /** The online issue behind the back-cover QR: pages of the approved layout once it is paid for. */
+  async issue(inviteKey: string): Promise<IssueView> {
+    const project = await this.deps.repository.findByInviteKey(inviteKey);
+    if (!project) throw AppError.notFound('Номер');
+    const [product, layouts] = await Promise.all([this.deps.catalog.product(project.productId), this.deps.repository.layouts(project.id)]);
+    const approved = layouts.find((layout) => layout.status === 'approved');
+    const ready = Boolean(approved) && (PROJECT_STATUSES_PAID as readonly string[]).includes(project.status);
+    return {
+      productId: project.productId,
+      subject: project.subject,
+      ready,
+      pages: ready ? approved!.pages : [],
+      acceptingContributions: product.collaboration.enabled && (project.status === 'draft' || project.status === 'deposit_paid'),
+    };
+  }
+
   async invite(inviteKey: string): Promise<InviteView> {
     const project = await this.deps.repository.findByInviteKey(inviteKey);
     if (!project) throw AppError.notFound('Приглашение');
@@ -386,6 +406,7 @@ export class ProjectService {
       status: project.status,
       designMode: project.designMode,
       nextVersion: (layouts[0]?.version ?? 0) + 1,
+      issueUrl: this.deps.issueUrl(project),
     };
   }
 

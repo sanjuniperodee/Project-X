@@ -229,7 +229,7 @@ function burst(cx: number, cy: number, outer: number, inner: number, points: num
 }
 
 /** Back cover: the hero's catchphrase as the last word of the issue. */
-export function backCover(c: Composer, s: Styles, issue: Issue, phrase: string, closing: string | undefined) {
+export function backCover(c: Composer, s: Styles, issue: Issue, phrase: string, closing: string | undefined, issueUrl?: string) {
   const t = s.t;
   const page = c.addPage('back', A4, t.dark);
   const text = phrase || (!issue.templateDraft && closing) || 'Продолжение следует';
@@ -240,6 +240,16 @@ export function backCover(c: Composer, s: Styles, issue: Issue, phrase: string, 
   if (phrase) c.fit(page, `— ${issue.hero}`, { ...s.deck, color: t.darkAccent, size: 18 }, { x: MARGIN, y: mm(76) + used, w: CONTENT.w, h: mm(10) }, { minSize: 10, maxLines: 1 });
   c.fit(page, t.masthead, { font: t.fonts.masthead, size: 30, leading: 1, color: t.onDark, tracking: Math.min(t.mastheadTracking, 4) }, { x: MARGIN, y: A4.h - mm(40), w: mm(100), h: mm(12) }, { minSize: 16, maxLines: 1 });
   c.fit(page, 'Сделано с любовью · coverme.kz', { ...s.folio, color: t.darkAccent }, { x: MARGIN, y: A4.h - mm(25), w: mm(100), h: mm(4) }, { minSize: 5, maxLines: 1 });
-  c.rect(page, { x: A4.w - MARGIN - mm(32), y: A4.h - mm(46), w: mm(32), h: mm(26) }, '#ffffff');
-  barcode(c, s, page, { x: A4.w - MARGIN - mm(29), y: A4.h - mm(43), w: mm(26), h: mm(16) }, issue.hero, '#000000');
+  if (!issueUrl) {
+    c.rect(page, { x: A4.w - MARGIN - mm(32), y: A4.h - mm(46), w: mm(32), h: mm(26) }, '#ffffff');
+    barcode(c, s, page, { x: A4.w - MARGIN - mm(29), y: A4.h - mm(43), w: mm(26), h: mm(16) }, issue.hero, '#000000');
+    return;
+  }
+  // The online issue: guests scan it at the party, leaf through, and can order one of their own.
+  const box = { x: A4.w - MARGIN - mm(34), y: A4.h - mm(56), w: mm(34), h: mm(34) };
+  c.rect(page, box, '#ffffff');
+  c.qr(page, { x: box.x + mm(3), y: box.y + mm(3), w: box.w - mm(6), h: box.h - mm(6) }, issueUrl, '#000000');
+  const caption = { x: box.x - mm(62), y: box.y + mm(9), w: mm(56), h: mm(20) };
+  const titleUsed = c.fit(page, 'Листайте номер онлайн', { font: t.fonts.sansBold, size: 9, leading: 1.2, color: t.onDark, align: 'right' }, caption, { minSize: 7, maxLines: 1 });
+  c.fit(page, 'Наведите камеру — и соберите такой же для своего человека', { ...s.folio, color: t.darkAccent, align: 'right', leading: 1.5 }, { ...caption, y: caption.y + titleUsed + mm(1.5), h: mm(10) }, { minSize: 5, maxLines: 2 });
 }

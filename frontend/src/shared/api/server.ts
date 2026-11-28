@@ -15,6 +15,7 @@ import {
   KaspiCashierStatus,
   KaspiCodeResponse,
   InviteView,
+  IssueView,
   PaymentView,
   Product,
   ProductSummary,
@@ -50,6 +51,7 @@ export const api = {
   product: (id: ProductId) => call(`/catalog/products/${id}`, Product),
   project: (editKey: string) => call(`/projects/${encodeURIComponent(editKey)}`, ProjectView),
   invite: (inviteKey: string) => call(`/invites/${encodeURIComponent(inviteKey)}`, InviteView),
+  issue: (inviteKey: string) => call(`/invites/${encodeURIComponent(inviteKey)}/issue`, IssueView),
   payment: (paymentId: string) => call(`/payments/${encodeURIComponent(paymentId)}`, PaymentView),
 
   admin: {

@@ -1,6 +1,7 @@
 import type { Draft, LayoutSource, MediaRef, Product } from '@px/contracts';
 import type { Box, Element, ImageElement, LayoutDocument, Page, PhotoRef, RectElement, Size, TextStyle } from '../domain/document';
 import { Materials } from '../domain/materials';
+import { qrMatrix, qrPath } from '../domain/qr';
 import { fitText, Story, type Flowable, type FontMetrics } from '../domain/text';
 
 /** Photos that could be read and placed; unsupported or missing files are left out (with a warning). */
@@ -77,6 +78,11 @@ export class Composer {
     const below = page.elements.findIndex((e) => e.type === 'image' && e.photo.key === photo.key && !e.cutout);
     const overlays = page.elements.slice(below + 1).filter((e): e is RectElement => e.type === 'rect' && !!e.gradient);
     page.elements.push({ type: 'image', photo, box, crop, cutout: { ...options, overlays } });
+  }
+
+  /** A QR code for `text` filling the square `box` (the caller leaves a light quiet zone around it). */
+  qr(page: Page, box: Box, text: string, color: string): void {
+    page.elements.push({ type: 'path', d: qrPath(qrMatrix(text), box.x, box.y, Math.min(box.w, box.h)), fill: color });
   }
 
   rect(page: Page, box: Box, fill: string | undefined, extra: Partial<Extract<Element, { type: 'rect' }>> = {}): void {

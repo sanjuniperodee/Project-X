@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Draft, DraftContent } from './drafts';
 import { Answers, StepAnswers } from './fields';
-import { DesignMode, DesignState, LayoutView } from './layouts';
+import { DesignMode, DesignState, LayoutPage, LayoutView } from './layouts';
 import { ProductId } from './products';
 import { Quote, QuoteSelection } from './quote';
 
@@ -191,6 +191,21 @@ export const InviteView = z.object({
 });
 export type InviteView = z.infer<typeof InviteView>;
 
+/**
+ * The online version of a finished issue, behind the QR code on its back cover. Reached by the
+ * invite link (friends who contributed see the result too); pages appear once the customer has
+ * approved the layout and paid for printing.
+ */
+export const IssueView = z.object({
+  productId: ProductId,
+  subject: z.string(),
+  ready: z.boolean(),
+  /** Pages of the approved layout (empty until ready). */
+  pages: z.array(LayoutPage),
+  acceptingContributions: z.boolean(),
+});
+export type IssueView = z.infer<typeof IssueView>;
+
 /** Row in the studio back-office list. */
 export const ProjectListItem = z.object({
   id: z.string(),
@@ -252,6 +267,8 @@ export const LayoutSource = z.object({
   nextVersion: z.number().int().positive(),
   answers: Answers,
   contributions: z.array(Contribution),
+  /** Public online issue (IssueView), printed as a QR code on the back cover. */
+  issueUrl: z.url().optional(),
 });
 export type LayoutSource = z.infer<typeof LayoutSource>;
 

@@ -142,6 +142,18 @@ describe('Cover Me portrait covers', () => {
   });
 });
 
+describe('Cover Me back cover', () => {
+  it('prints a QR code to the online issue, or the barcode without one', () => {
+    const source = { ...withStyle('vogue'), issueUrl: 'https://coverme.kz/issue/Xq3vK9pLmN2rT8wY4zBc' };
+    const back = build(source).pages.at(-1)!;
+    expect(back.kind).toBe('back');
+    expect(back.elements.some((e) => e.type === 'path' && e.d.length > 1000)).toBe(true);
+    expect(texts({ pages: [back] } as ReturnType<typeof build>)).toContain('Листайте номер онлайн');
+    const plain = build(withStyle('vogue')).pages.at(-1)!;
+    expect(plain.elements.some((e) => e.type === 'path')).toBe(false);
+  });
+});
+
 describe('vivid colour of a photo', () => {
   it('finds the red of a sweater and ignores skin and greys', () => {
     const pixels = new Uint8Array(100 * 4);

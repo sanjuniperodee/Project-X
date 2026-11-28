@@ -22,7 +22,8 @@
     "jpeg-js": "^0.4.4",
     "onnxruntime-web": "^1.22.0",
     "pdfkit": "^0.21.0",
-    "png-js": "^3.0.0"
+    "png-js": "^3.0.0",
+    "qrcode-generator": "^1.4.4"
   },
   "devDependencies": {
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",

@@ -34,16 +34,17 @@ export async function buildProjectsApp(deps: ProjectsAppDeps) {
       error instanceof ProjectRuleViolation ? AppError.conflict(error.message) : undefined,
   });
 
+  /** The brand's site, without a trailing slash. */
+  const siteOf = (productId: ProductId) =>
+    (deps.productUrls?.[productId] ?? new URL(`/${productId}`, deps.frontendUrl).toString()).replace(/\/$/, '');
   const projects = new ProjectService({
     repository: new DrizzleProjectRepository(deps.db),
     queries: new DrizzleBackOfficeQueries(deps.db),
     catalog: deps.catalog,
     payments: deps.payments,
     revisionsLimit: deps.layoutRevisionLimit ?? 3,
-    workspaceUrl: ({ productId, editKey }) => {
-      const base = deps.productUrls?.[productId] ?? new URL(`/${productId}`, deps.frontendUrl).toString();
-      return `${base.replace(/\/$/, '')}/p/${editKey}`;
-    },
+    workspaceUrl: ({ productId, editKey }) => `${siteOf(productId)}/p/${editKey}`,
+    issueUrl: ({ productId, inviteKey }) => `${siteOf(productId)}/issue/${inviteKey}`,
   });
 
   const bus = await deps.connectBus(service.app.log);

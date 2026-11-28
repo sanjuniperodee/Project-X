@@ -70,6 +70,11 @@ export function registerInviteRoutes(app: FastifyInstance, projects: ProjectServ
     return projects.invite(inviteKey);
   });
 
+  app.get('/invites/:inviteKey/issue', async (request) => {
+    const { inviteKey } = parseInput(InviteParams, request.params);
+    return projects.issue(inviteKey);
+  });
+
   app.post('/invites/:inviteKey/contributions', async (request, reply) => {
     const { inviteKey } = parseInput(InviteParams, request.params);
     const body = parseInput(ContributionRequest, request.body);
