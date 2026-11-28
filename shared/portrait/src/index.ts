@@ -1,6 +1,7 @@
 export { INPUT_SHORT_EDGE, inputSize, PORTRAIT_MODELS, toInputTensor, type MattingModel, type PortraitModelVariant } from './model';
 export { traceSilhouette, type Silhouette } from './silhouette';
 export { outlinePath, portraitCrop, type PortraitTarget, type Rect } from './crop';
+export { COVER_MAX_SCALE, COVER_ME_HEADS, COVER_PAGE, cutoutBand, placeCoverPortrait, type CoverMeStyle, type CoverPortrait } from './cover-me';
 
 import type { MattingModel } from './model';
 import { toInputTensor } from './model';

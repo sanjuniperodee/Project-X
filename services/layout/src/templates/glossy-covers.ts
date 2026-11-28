@@ -1,5 +1,5 @@
-import { portraitCrop } from '@px/portrait';
-import { A4, BLEED, mm, type Box, type PhotoRef } from '../domain/document';
+import { COVER_ME_HEADS, cutoutBand, placeCoverPortrait, type CoverMeStyle, type CoverPortrait } from '@px/portrait';
+import { A4, BLEED, mm, type PhotoRef } from '../domain/document';
 import { barcode, CONTENT, FULL_BLEED, MARGIN, shade, sideShade, type Issue, type Styles } from './glossy-kit';
 import type { Composer } from './template';
 
@@ -17,64 +17,21 @@ export interface CoverLine {
 
 const PRICE = 'Цена: бесценно';
 
-/** Zoom limit for portrait crops, in points per photo pixel: the print keeps at least 150 dpi. */
-const MAX_SCALE = 72 / 150;
-/** How far the head may land from its target before the cut-out is given up (clamped crops). */
-const DEPTH_TOLERANCE = mm(6);
-
-interface Portrait {
-  crop: Box;
-  /** The head can stand in front of the masthead. */
-  depth: boolean;
-  /** Left edge of the head on the page: cover lines keep clear of the face. */
-  headLeft: number;
-  /** The head on the page: stickers and bursts keep clear of it. */
-  head: Box;
-}
-
 /**
- * Places a traced portrait for a cover: the head zoomed to `headWidth` and centred on `centerX`.
- * With headroom in the photo its top goes to `depthTop`, inside the masthead, and the template
- * draws the head again in front of the letters; otherwise it goes to `plainTop`, below the masthead.
- * Photos without a silhouette keep the plain focus crop (undefined).
+ * The traced cover photo placed for a style (shared with the try-on on the landing, see
+ * `@px/portrait`): the head zoomed and positioned, in front of the masthead when the photo has
+ * headroom. Photos without a silhouette keep the plain focus crop (undefined).
  */
-function placePortrait(
-  photo: PhotoRef | undefined,
-  frame: Box,
-  target: { depthTop?: number; plainTop: number; centerX: number; headWidth: number },
-): Portrait | undefined {
-  const s = photo?.silhouette;
-  if (!photo || !s) return undefined;
-  const at = (headTop: number) => {
-    const crop = portraitCrop(photo, s, frame, { headTop, centerX: target.centerX, headWidth: target.headWidth }, MAX_SCALE);
-    const head = {
-      x: crop.x + (s.head.cx - s.head.width / 2) * crop.w,
-      y: crop.y + s.head.top * crop.h,
-      w: s.head.width * crop.w,
-      h: s.head.height * crop.h,
-    };
-    return { crop, top: head.y, headLeft: head.x, head };
-  };
-  // A head cut by the top edge of the photo would show a flat edge in the middle of the masthead.
-  const headroom = s.head.top > 0.012;
-  if (target.depthTop !== undefined && headroom) {
-    const deep = at(target.depthTop);
-    if (Math.abs(deep.top - target.depthTop) <= DEPTH_TOLERANCE) return { crop: deep.crop, depth: true, headLeft: deep.headLeft, head: deep.head };
-  }
-  const plain = at(target.plainTop);
-  return { crop: plain.crop, depth: false, headLeft: plain.headLeft, head: plain.head };
+function placePortrait(photo: PhotoRef | undefined, style: CoverMeStyle): CoverPortrait | undefined {
+  return photo?.silhouette ? placeCoverPortrait(style, photo, photo.silhouette) : undefined;
 }
 
 /** Width of the cover-lines column from the left margin: `preferred`, narrowed to stay off the face. */
-function linesWidth(portrait: Portrait | undefined, preferred: number, min = mm(54)): number {
+function linesWidth(portrait: CoverPortrait | undefined, preferred: number, min = mm(54)): number {
   if (!portrait) return preferred;
-  return Math.max(min, Math.min(preferred, portrait.headLeft - MARGIN - mm(5)));
+  return Math.max(min, Math.min(preferred, portrait.head.x - MARGIN - mm(5)));
 }
 
-/** Everything above `bottom`, across the bleed: the band where a cut-out head covers the masthead. */
-function bandAbove(bottom: number): Box {
-  return { x: -BLEED, y: -BLEED, w: FULL_BLEED.w, h: bottom + BLEED };
-}
 
 export function coverPage(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undefined, lines: CoverLine[], tagline: string) {
   switch (s.t.cover) {
@@ -96,7 +53,7 @@ function issueLine(issue: Issue): string {
 function classicCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undefined, lines: CoverLine[], tagline: string) {
   const t = s.t;
   const page = c.addPage('cover', A4, photo ? t.shadow : t.accent);
-  const portrait = placePortrait(photo, FULL_BLEED, { depthTop: mm(29), plainTop: mm(60), centerX: A4.w * 0.62, headWidth: A4.w * 0.34 });
+  const portrait = placePortrait(photo, 'vogue');
   const column = linesWidth(portrait, mm(74));
   if (photo) {
     c.image(page, photo, FULL_BLEED, portrait ? { crop: portrait.crop } : { focusY: 0.22 });
@@ -107,7 +64,7 @@ function classicCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | un
   }
   c.fit(page, t.masthead, { font: t.fonts.masthead, size: 150, leading: 0.9, color: t.onPhoto, align: 'center', tracking: t.mastheadTracking }, { x: mm(8), y: mm(9), w: A4.w - mm(16), h: mm(44) }, { minSize: 70, maxLines: 1 });
   // The head in front of the masthead, down to where the top shade ends (no seam on the face).
-  if (photo && portrait?.depth) c.cutout(page, photo, bandAbove(mm(70)), portrait.crop);
+  if (photo && portrait?.depth) c.cutout(page, photo, cutoutBand('vogue'), portrait.crop);
   // The issue line runs over everything, the head included, like on a newsstand cover.
   const strip = { x: MARGIN, y: mm(50), w: CONTENT.w, h: mm(5) };
   c.fit(page, issueLine(issue), { ...s.folio, color: t.onPhoto, size: 7.5 }, strip, { minSize: 5, maxLines: 1 });
@@ -137,7 +94,7 @@ function tabloidCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | un
   const t = s.t;
   const YELLOW = t.soft;
   const page = c.addPage('cover', A4, photo ? t.shadow : YELLOW);
-  const portrait = placePortrait(photo, FULL_BLEED, { depthTop: mm(27), plainTop: mm(62), centerX: A4.w * 0.66, headWidth: A4.w * 0.32 });
+  const portrait = placePortrait(photo, 'tabloid');
   const column = linesWidth(portrait, mm(92), mm(58));
   if (photo) {
     c.image(page, photo, FULL_BLEED, portrait ? { crop: portrait.crop } : { focusY: 0.2 });
@@ -152,7 +109,7 @@ function tabloidCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | un
   c.fit(page, issueLine(issue), { ...s.folio, color: t.ink, size: 7.5 }, strip, { minSize: 5, maxLines: 1 });
   c.fit(page, PRICE, { ...s.folio, color: t.ink, size: 7.5, align: 'right' }, strip, { minSize: 5, maxLines: 1 });
   // The head bursts out of the red band, cut out like a sticker with a white edge.
-  if (photo && portrait?.depth) c.cutout(page, photo, bandAbove(mm(54)), portrait.crop, { outline: { color: '#ffffff', width: 2.4 } });
+  if (photo && portrait?.depth) c.cutout(page, photo, cutoutBand('tabloid'), portrait.crop, { outline: { color: '#ffffff', width: 2.4 } });
 
   // Shouting cover lines: yellow capitals on black bars, sized to the words.
   let y = mm(66);
@@ -203,9 +160,9 @@ function airyCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undef
   c.fit(page, PRICE, { ...s.folio, color: t.muted, size: 7, align: 'right' }, strip, { minSize: 5, maxLines: 1 });
 
   // The portrait as a print on the page, with a hairline frame offset like a passe-partout.
-  const box = { x: mm(22), y: mm(62), w: A4.w - mm(44), h: mm(168) };
+  const box = COVER_ME_HEADS.tender.frame;
   // A quiet print: the face placed in the frame, nothing breaking out of it.
-  const portrait = placePortrait(photo, box, { plainTop: box.y + mm(14), centerX: A4.w / 2, headWidth: A4.w * 0.3 });
+  const portrait = placePortrait(photo, 'tender');
   if (photo) {
     c.image(page, photo, box, portrait ? { crop: portrait.crop } : { focusY: 0.25 });
     shade(c, s, page, box.y + box.h - mm(60), box.y + box.h, 0.5, 'up');
@@ -230,7 +187,7 @@ function airyCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undef
 function noirCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undefined, lines: CoverLine[], tagline: string) {
   const t = s.t;
   const page = c.addPage('cover', A4, t.paper);
-  const portrait = placePortrait(photo, FULL_BLEED, { depthTop: mm(31), plainTop: mm(54), centerX: A4.w * 0.62, headWidth: A4.w * 0.32 });
+  const portrait = placePortrait(photo, 'noir');
   const column = linesWidth(portrait, mm(62), mm(50));
   if (photo) {
     c.image(page, photo, FULL_BLEED, portrait ? { crop: portrait.crop } : { focusY: 0.25 });
@@ -243,7 +200,7 @@ function noirCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undef
   c.rect(page, { x: mm(7), y: mm(7), w: A4.w - mm(14), h: A4.h - mm(14) }, undefined, { stroke: { color: t.accent, width: 0.7 } });
   c.fit(page, t.masthead, { font: t.fonts.masthead, size: 72, leading: 1, color: t.onPhoto, align: 'center', tracking: t.mastheadTracking }, { x: mm(14), y: mm(16), w: A4.w - mm(28), h: mm(26) }, { minSize: 36, maxLines: 1 });
   // In front of the masthead and the gold frame.
-  if (photo && portrait?.depth) c.cutout(page, photo, bandAbove(mm(80)), portrait.crop);
+  if (photo && portrait?.depth) c.cutout(page, photo, cutoutBand('noir'), portrait.crop);
   c.fit(page, issueLine(issue), { ...s.folio, color: t.accent, size: 7, align: 'center', tracking: 3 }, { x: mm(14), y: mm(42), w: A4.w - mm(28), h: mm(5) }, { minSize: 5, maxLines: 1 });
 
   // Cover lines as film credits down the left edge, clear of the face.

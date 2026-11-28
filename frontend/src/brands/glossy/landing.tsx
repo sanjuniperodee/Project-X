@@ -6,9 +6,9 @@ import { ButtonLink } from '@/shared/ui/button';
 import { Container } from '@/shared/ui/container';
 import { cn } from '@/shared/lib/cn';
 import { IssueReader } from './issue-reader';
-import { LiveCover } from './live-cover';
 import { SAMPLE_PAGE_SIZE, samplePage } from './sample-issue';
 import { StyleShowcase } from './style-showcase';
+import { TryOnCover } from './try-on/try-on';
 
 const CTA = 'Собрать журнал';
 
@@ -138,7 +138,7 @@ export function GlossyLanding({ product, href }: LandingProps) {
             </div>
           </div>
           <div className="mx-auto w-full max-w-[440px] lg:col-span-5 lg:mr-0">
-            <LiveCover />
+            <TryOnCover domain={product.domain} createHref={href('/create')} />
           </div>
         </Container>
       </section>

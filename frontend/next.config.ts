@@ -8,9 +8,17 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Shared contracts are TypeScript source living outside this folder.
-  transpilePackages: ['@px/contracts'],
+  transpilePackages: ['@px/contracts', '@px/portrait'],
   outputFileTracingRoot: repoRoot,
   turbopack: { root: repoRoot },
+  // The try-on's model and runtime (scripts/portrait-assets.mjs): versioned names, cached for good.
+  async headers() {
+    const immutable = [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }];
+    return [
+      { source: '/models/:file*', headers: immutable },
+      { source: '/vendor/:file*', headers: immutable },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useId, useMemo, useState, type FormEvent } from 'react';
-import { calculateQuote, CreateProjectRequest, formatTenge, type Product } from '@px/contracts';
+import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
+import { calculateQuote, CreateProjectRequest, formatTenge, type MediaRef, type Product, type StepAnswers } from '@px/contracts';
 import { browserApi } from '@/shared/api/browser';
+import { clearHandoff, peekHandoff, type Handoff } from '@/shared/lib/handoff';
 import { ApiError } from '@/shared/api/core';
 import { useBrand } from '@/shared/lib/brand-context';
 import { cn } from '@/shared/lib/cn';
@@ -33,6 +34,16 @@ export function CreateProjectForm({ product, copy }: { product: Product; copy: C
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [handoff, setHandoff] = useState<Handoff | null>(null);
+
+  // Something prepared on the landing (the Cover Me try-on): the name goes here, the rest into the questionnaire.
+  useEffect(() => {
+    void peekHandoff(product.id).then((found) => {
+      if (!found) return;
+      setHandoff(found);
+      if (found.subject) setSubject((current) => current || found.subject!);
+    });
+  }, [product.id]);
 
   const quote = useMemo(() => calculateQuote(product, { formatId, extras }), [product, formatId, extras]);
 
@@ -54,6 +65,7 @@ export function CreateProjectForm({ product, copy }: { product: Product; copy: C
     setSubmitting(true);
     try {
       const created = await browserApi.createProject(parsed.data);
+      if (handoff) await applyHandoff(created.editKey, handoff);
       router.push(href(`/p/${created.editKey}`));
     } catch (error) {
       setSubmitting(false);
@@ -67,6 +79,21 @@ export function CreateProjectForm({ product, copy }: { product: Product; copy: C
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-12 lg:grid-cols-[1fr_360px] lg:items-start lg:gap-14">
       <div className="flex flex-col gap-12">
+        {handoff && (
+          <Notice tone="success" title="Перенесём в анкету">
+            {handoff.summary}{' '}
+            <button
+              type="button"
+              className="underline underline-offset-4"
+              onClick={() => {
+                setHandoff(null);
+                void clearHandoff();
+              }}
+            >
+              Не переносить
+            </button>
+          </Notice>
+        )}
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-4 font-display text-2xl font-semibold">Формат</legend>
           {product.formats.map((format) => {
@@ -258,4 +285,23 @@ function Stepper({ label, value, max, onChange }: { label: string; value: number
       </button>
     </div>
   );
+}
+
+/**
+ * Pours the landing's handoff into the new project: answers per step, photos uploaded into their
+ * fields. Best effort: whatever fails can still be filled in the questionnaire.
+ */
+async function applyHandoff(editKey: string, handoff: Handoff) {
+  const steps: Record<string, StepAnswers> = structuredClone(handoff.answers ?? {});
+  for (const photo of handoff.photos ?? []) {
+    try {
+      const uploaded = await browserApi.upload(new File([photo.file], photo.name, { type: photo.file.type }));
+      const step = (steps[photo.stepId] ??= {});
+      step[photo.fieldId] = [...((step[photo.fieldId] as MediaRef[] | undefined) ?? []), { id: uploaded.id, url: uploaded.url }];
+    } catch {
+      // The photo can be added in the questionnaire.
+    }
+  }
+  await Promise.all(Object.entries(steps).map(([stepId, answers]) => browserApi.saveStep(editKey, stepId, answers).catch(() => undefined)));
+  await clearHandoff();
 }
