@@ -1,5 +1,6 @@
-import { A4, BLEED, mm, type PhotoRef } from '../domain/document';
-import { barcode, CONTENT, FULL_BLEED, MARGIN, shade, type Issue, type Styles } from './glossy-kit';
+import { portraitCrop } from '@px/portrait';
+import { A4, BLEED, mm, type Box, type PhotoRef } from '../domain/document';
+import { barcode, CONTENT, FULL_BLEED, MARGIN, shade, sideShade, type Issue, type Styles } from './glossy-kit';
 import type { Composer } from './template';
 
 /**
@@ -15,6 +16,65 @@ export interface CoverLine {
 }
 
 const PRICE = 'Цена: бесценно';
+
+/** Zoom limit for portrait crops, in points per photo pixel: the print keeps at least 150 dpi. */
+const MAX_SCALE = 72 / 150;
+/** How far the head may land from its target before the cut-out is given up (clamped crops). */
+const DEPTH_TOLERANCE = mm(6);
+
+interface Portrait {
+  crop: Box;
+  /** The head can stand in front of the masthead. */
+  depth: boolean;
+  /** Left edge of the head on the page: cover lines keep clear of the face. */
+  headLeft: number;
+  /** The head on the page: stickers and bursts keep clear of it. */
+  head: Box;
+}
+
+/**
+ * Places a traced portrait for a cover: the head zoomed to `headWidth` and centred on `centerX`.
+ * With headroom in the photo its top goes to `depthTop`, inside the masthead, and the template
+ * draws the head again in front of the letters; otherwise it goes to `plainTop`, below the masthead.
+ * Photos without a silhouette keep the plain focus crop (undefined).
+ */
+function placePortrait(
+  photo: PhotoRef | undefined,
+  frame: Box,
+  target: { depthTop?: number; plainTop: number; centerX: number; headWidth: number },
+): Portrait | undefined {
+  const s = photo?.silhouette;
+  if (!photo || !s) return undefined;
+  const at = (headTop: number) => {
+    const crop = portraitCrop(photo, s, frame, { headTop, centerX: target.centerX, headWidth: target.headWidth }, MAX_SCALE);
+    const head = {
+      x: crop.x + (s.head.cx - s.head.width / 2) * crop.w,
+      y: crop.y + s.head.top * crop.h,
+      w: s.head.width * crop.w,
+      h: s.head.height * crop.h,
+    };
+    return { crop, top: head.y, headLeft: head.x, head };
+  };
+  // A head cut by the top edge of the photo would show a flat edge in the middle of the masthead.
+  const headroom = s.head.top > 0.012;
+  if (target.depthTop !== undefined && headroom) {
+    const deep = at(target.depthTop);
+    if (Math.abs(deep.top - target.depthTop) <= DEPTH_TOLERANCE) return { crop: deep.crop, depth: true, headLeft: deep.headLeft, head: deep.head };
+  }
+  const plain = at(target.plainTop);
+  return { crop: plain.crop, depth: false, headLeft: plain.headLeft, head: plain.head };
+}
+
+/** Width of the cover-lines column from the left margin: `preferred`, narrowed to stay off the face. */
+function linesWidth(portrait: Portrait | undefined, preferred: number, min = mm(54)): number {
+  if (!portrait) return preferred;
+  return Math.max(min, Math.min(preferred, portrait.headLeft - MARGIN - mm(5)));
+}
+
+/** Everything above `bottom`, across the bleed: the band where a cut-out head covers the masthead. */
+function bandAbove(bottom: number): Box {
+  return { x: -BLEED, y: -BLEED, w: FULL_BLEED.w, h: bottom + BLEED };
+}
 
 export function coverPage(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undefined, lines: CoverLine[], tagline: string) {
   switch (s.t.cover) {
@@ -36,19 +96,26 @@ function issueLine(issue: Issue): string {
 function classicCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undefined, lines: CoverLine[], tagline: string) {
   const t = s.t;
   const page = c.addPage('cover', A4, photo ? t.shadow : t.accent);
+  const portrait = placePortrait(photo, FULL_BLEED, { depthTop: mm(29), plainTop: mm(60), centerX: A4.w * 0.62, headWidth: A4.w * 0.34 });
+  const column = linesWidth(portrait, mm(74));
   if (photo) {
-    c.image(page, photo, FULL_BLEED, { focusY: 0.22 });
+    c.image(page, photo, FULL_BLEED, portrait ? { crop: portrait.crop } : { focusY: 0.22 });
     shade(c, s, page, -BLEED, mm(70), 0.45, 'down');
     shade(c, s, page, A4.h - mm(110), A4.h + BLEED, 0.6, 'up');
+    // White cover lines stay readable over a bright background.
+    sideShade(c, s, page, MARGIN + column + mm(40), 0.55);
   }
   c.fit(page, t.masthead, { font: t.fonts.masthead, size: 150, leading: 0.9, color: t.onPhoto, align: 'center', tracking: t.mastheadTracking }, { x: mm(8), y: mm(9), w: A4.w - mm(16), h: mm(44) }, { minSize: 70, maxLines: 1 });
+  // The head in front of the masthead, down to where the top shade ends (no seam on the face).
+  if (photo && portrait?.depth) c.cutout(page, photo, bandAbove(mm(70)), portrait.crop);
+  // The issue line runs over everything, the head included, like on a newsstand cover.
   const strip = { x: MARGIN, y: mm(50), w: CONTENT.w, h: mm(5) };
   c.fit(page, issueLine(issue), { ...s.folio, color: t.onPhoto, size: 7.5 }, strip, { minSize: 5, maxLines: 1 });
   c.fit(page, PRICE, { ...s.folio, color: t.onPhoto, size: 7.5, align: 'right' }, strip, { minSize: 5, maxLines: 1 });
 
   let y = mm(78);
   lines.slice(0, 4).forEach((line, i) => {
-    const box = { x: MARGIN, y, w: mm(74), h: mm(24) };
+    const box = { x: MARGIN, y, w: column, h: mm(24) };
     if (i === 0) {
       c.rect(page, { x: MARGIN, y: y - mm(1), w: mm(26), h: mm(5.5) }, t.accent);
       c.fit(page, 'Эксклюзив', { font: t.fonts.sansBold, size: 7, leading: 1, color: t.onAccent, align: 'center', tracking: 1.6, uppercase: true }, { x: MARGIN, y: y + mm(0.4), w: mm(26), h: mm(4) }, { minSize: 5, maxLines: 1 });
@@ -70,9 +137,12 @@ function tabloidCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | un
   const t = s.t;
   const YELLOW = t.soft;
   const page = c.addPage('cover', A4, photo ? t.shadow : YELLOW);
+  const portrait = placePortrait(photo, FULL_BLEED, { depthTop: mm(27), plainTop: mm(62), centerX: A4.w * 0.66, headWidth: A4.w * 0.32 });
+  const column = linesWidth(portrait, mm(92), mm(58));
   if (photo) {
-    c.image(page, photo, FULL_BLEED, { focusY: 0.2 });
+    c.image(page, photo, FULL_BLEED, portrait ? { crop: portrait.crop } : { focusY: 0.2 });
     shade(c, s, page, A4.h - mm(120), A4.h + BLEED, 0.75, 'up');
+    sideShade(c, s, page, MARGIN + column + mm(30), 0.5);
   }
   // Masthead band and the yellow issue strip.
   c.rect(page, { x: -BLEED, y: -BLEED, w: FULL_BLEED.w, h: mm(46) + BLEED }, t.accent);
@@ -81,27 +151,40 @@ function tabloidCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | un
   const strip = { x: MARGIN, y: mm(48.2), w: CONTENT.w, h: mm(4) };
   c.fit(page, issueLine(issue), { ...s.folio, color: t.ink, size: 7.5 }, strip, { minSize: 5, maxLines: 1 });
   c.fit(page, PRICE, { ...s.folio, color: t.ink, size: 7.5, align: 'right' }, strip, { minSize: 5, maxLines: 1 });
+  // The head bursts out of the red band, cut out like a sticker with a white edge.
+  if (photo && portrait?.depth) c.cutout(page, photo, bandAbove(mm(54)), portrait.crop, { outline: { color: '#ffffff', width: 2.4 } });
 
   // Shouting cover lines: yellow capitals on black bars, sized to the words.
   let y = mm(66);
   lines.slice(0, 4).forEach((line, i) => {
     const size = i === 0 ? 30 : 21;
     const title = line.title.toLocaleUpperCase('ru-RU');
-    const width = Math.min(mm(92), c.metrics.width(t.fonts.display, title, size) + mm(6));
+    // Bars hug the words and never reach the face.
+    const width = Math.min(column, c.metrics.width(t.fonts.display, title, size) + mm(6));
     // The bar's height depends on how the title sets, so it is inserted under the text afterwards.
     const barIndex = page.elements.length;
     const used = c.fit(page, title, { font: t.fonts.display, size, leading: 1.02, color: YELLOW }, { x: MARGIN + mm(3), y: y + mm(1.5), w: width - mm(4), h: mm(26) }, { minSize: 13, maxLines: 2 });
     page.elements.splice(barIndex, 0, { type: 'rect', box: { x: MARGIN, y, w: width, h: used + mm(3) }, fill: '#000000' });
-    const textUsed = c.fit(page, line.text, { font: t.fonts.sansBold, size: 9, leading: 1.25, color: t.onPhoto }, { x: MARGIN, y: y + used + mm(4.5), w: mm(80), h: mm(10) }, { minSize: 7, maxLines: 2 });
+    const textUsed = c.fit(page, line.text, { font: t.fonts.sansBold, size: 9, leading: 1.25, color: t.onPhoto }, { x: MARGIN, y: y + used + mm(4.5), w: Math.min(mm(80), column), h: mm(10) }, { minSize: 7, maxLines: 2 });
     y += used + textUsed + mm(10);
   });
 
-  // The burst: a yellow circle with a red word, like a supermarket tabloid.
+  // The burst: a yellow star with a red word, like a supermarket tabloid. Never on the face: below
+  // the head when there is room above the name, otherwise left out.
   const cx = A4.w - MARGIN - mm(22);
-  const cy = mm(86);
-  page.elements.push({ type: 'path', d: burst(cx, cy, mm(24), mm(19), 18), fill: YELLOW });
-  c.fit(page, 'Сенсация!', { font: t.fonts.display, size: 17, leading: 1, color: t.accent, align: 'center', uppercase: true }, { x: cx - mm(18), y: cy - mm(6), w: mm(36), h: mm(8) }, { minSize: 10, maxLines: 1 });
-  c.fit(page, 'Все тайны раскрыты', { font: t.fonts.sansBold, size: 7.5, leading: 1.15, color: t.ink, align: 'center' }, { x: cx - mm(16), y: cy + mm(2.5), w: mm(32), h: mm(8) }, { minSize: 5.5, maxLines: 2 });
+  const radius = mm(24);
+  let cy: number | undefined = mm(86);
+  if (portrait) {
+    const { head } = portrait;
+    const overlapsX = cx + radius > head.x && cx - radius < head.x + head.w;
+    cy = overlapsX ? Math.max(mm(86), head.y + head.h + radius + mm(4)) : mm(86);
+    if (cy + radius > A4.h - mm(84)) cy = undefined;
+  }
+  if (cy !== undefined) {
+    page.elements.push({ type: 'path', d: burst(cx, cy, radius, mm(19), 18), fill: YELLOW });
+    c.fit(page, 'Сенсация!', { font: t.fonts.display, size: 17, leading: 1, color: t.accent, align: 'center', uppercase: true }, { x: cx - mm(18), y: cy - mm(6), w: mm(36), h: mm(8) }, { minSize: 10, maxLines: 1 });
+    c.fit(page, 'Все тайны раскрыты', { font: t.fonts.sansBold, size: 7.5, leading: 1.15, color: t.ink, align: 'center' }, { x: cx - mm(16), y: cy + mm(2.5), w: mm(32), h: mm(8) }, { minSize: 5.5, maxLines: 2 });
+  }
 
   const name = issue.hero.toLocaleUpperCase('ru-RU');
   c.fit(page, name, { font: t.fonts.masthead, size: 110, leading: 0.92, color: t.onPhoto }, { x: MARGIN, y: A4.h - mm(80), w: CONTENT.w - mm(32), h: mm(54) }, { minSize: 36, maxLines: 2, verticalAlign: 'bottom' });
@@ -121,8 +204,10 @@ function airyCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undef
 
   // The portrait as a print on the page, with a hairline frame offset like a passe-partout.
   const box = { x: mm(22), y: mm(62), w: A4.w - mm(44), h: mm(168) };
+  // A quiet print: the face placed in the frame, nothing breaking out of it.
+  const portrait = placePortrait(photo, box, { plainTop: box.y + mm(14), centerX: A4.w / 2, headWidth: A4.w * 0.3 });
   if (photo) {
-    c.image(page, photo, box, { focusY: 0.25 });
+    c.image(page, photo, box, portrait ? { crop: portrait.crop } : { focusY: 0.25 });
     shade(c, s, page, box.y + box.h - mm(60), box.y + box.h, 0.5, 'up');
     // The shade spans the bleed; mask its sides back to paper.
     c.rect(page, { x: -BLEED, y: box.y + box.h - mm(60), w: box.x + BLEED, h: mm(60) }, t.paper);
@@ -145,23 +230,27 @@ function airyCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undef
 function noirCover(c: Composer, s: Styles, issue: Issue, photo: PhotoRef | undefined, lines: CoverLine[], tagline: string) {
   const t = s.t;
   const page = c.addPage('cover', A4, t.paper);
+  const portrait = placePortrait(photo, FULL_BLEED, { depthTop: mm(31), plainTop: mm(54), centerX: A4.w * 0.62, headWidth: A4.w * 0.32 });
+  const column = linesWidth(portrait, mm(62), mm(50));
   if (photo) {
-    c.image(page, photo, FULL_BLEED, { focusY: 0.25 });
-    // A darker, film-like exposure overall, then deep shade at both ends.
-    c.rect(page, FULL_BLEED, t.shadow, { opacity: 0.28 });
-    shade(c, s, page, -BLEED, mm(90), 0.8, 'down');
-    shade(c, s, page, A4.h - mm(140), A4.h + BLEED, 0.92, 'up');
+    c.image(page, photo, FULL_BLEED, portrait ? { crop: portrait.crop } : { focusY: 0.25 });
+    // Film-like: deep shade at both ends and under the credits, the face left in its own light.
+    shade(c, s, page, -BLEED, mm(80), 0.62, 'down');
+    shade(c, s, page, A4.h - mm(120), A4.h + BLEED, 0.85, 'up');
+    sideShade(c, s, page, mm(16) + column + mm(30), 0.5);
   }
   // A gold hairline frame around the trimmed page.
   c.rect(page, { x: mm(7), y: mm(7), w: A4.w - mm(14), h: A4.h - mm(14) }, undefined, { stroke: { color: t.accent, width: 0.7 } });
   c.fit(page, t.masthead, { font: t.fonts.masthead, size: 72, leading: 1, color: t.onPhoto, align: 'center', tracking: t.mastheadTracking }, { x: mm(14), y: mm(16), w: A4.w - mm(28), h: mm(26) }, { minSize: 36, maxLines: 1 });
+  // In front of the masthead and the gold frame.
+  if (photo && portrait?.depth) c.cutout(page, photo, bandAbove(mm(80)), portrait.crop);
   c.fit(page, issueLine(issue), { ...s.folio, color: t.accent, size: 7, align: 'center', tracking: 3 }, { x: mm(14), y: mm(42), w: A4.w - mm(28), h: mm(5) }, { minSize: 5, maxLines: 1 });
 
   // Cover lines as film credits down the left edge, clear of the face.
   let y = mm(64);
   for (const line of lines.slice(0, 3)) {
-    const used = c.fit(page, line.title.toLocaleUpperCase('ru-RU'), { font: t.fonts.display, size: 14, leading: 1.15, color: t.onPhoto, tracking: 2.2 }, { x: mm(16), y, w: mm(62), h: mm(14) }, { minSize: 9, maxLines: 2 });
-    c.fit(page, line.text, { font: t.fonts.serifItalic, size: 11, leading: 1.25, color: t.accent }, { x: mm(16), y: y + used + mm(1), w: mm(62), h: mm(9) }, { minSize: 8, maxLines: 2 });
+    const used = c.fit(page, line.title.toLocaleUpperCase('ru-RU'), { font: t.fonts.display, size: 14, leading: 1.15, color: t.onPhoto, tracking: 2.2 }, { x: mm(16), y, w: column, h: mm(14) }, { minSize: 9, maxLines: 2 });
+    c.fit(page, line.text, { font: t.fonts.serifItalic, size: 11, leading: 1.25, color: t.accent }, { x: mm(16), y: y + used + mm(1), w: column, h: mm(9) }, { minSize: 8, maxLines: 2 });
     c.line(page, { x: mm(16), y: y + used + mm(12) }, { x: mm(24), y: y + used + mm(12) }, t.accent, 0.6);
     y += used + mm(19);
   }

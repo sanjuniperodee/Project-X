@@ -4,17 +4,18 @@ import path from 'node:path';
 import type { Draft, EventEnvelope, LayoutPage, LayoutSource, Product } from '@px/contracts';
 import { AppError, type DeliveryInfo, type EventBus, type Logger } from '@px/service-kit';
 import { toMm, type LayoutDocument } from '../domain/document';
-import { collectPhotos } from '../domain/materials';
+import { collectPhotos, Materials } from '../domain/materials';
 import type { FontMetrics } from '../domain/text';
 import { TEMPLATES } from '../templates';
 import { PhotoStore } from './photo-store';
-import type { CatalogGateway, ImageProcessor, MediaGateway, ProjectsGateway, Renderer } from './ports';
+import type { CatalogGateway, ImageProcessor, MediaGateway, PortraitFinder, ProjectsGateway, Renderer } from './ports';
 
 export interface LayoutServiceDeps {
   projects: ProjectsGateway;
   catalog: CatalogGateway;
   media: MediaGateway;
   images: ImageProcessor;
+  portraits: PortraitFinder;
   renderer: Renderer;
   fonts: FontMetrics;
   bus: EventBus;
@@ -101,10 +102,17 @@ export class LayoutService {
   async render(product: Product, source: LayoutSource, draft: Draft): Promise<RenderedLayout> {
     const workdir = await mkdtemp(path.join(this.deps.tmpDir, 'px-layout-'));
     try {
-      const photos = new PhotoStore({ media: this.deps.media, images: this.deps.images, dir: workdir, thumbnailSize: this.deps.thumbnailSize });
-      await photos.prepare(collectPhotos(product, source.answers, source.contributions));
-
       const template = TEMPLATES[product.id];
+      const photos = new PhotoStore({
+        media: this.deps.media,
+        images: this.deps.images,
+        portraits: this.deps.portraits,
+        dir: workdir,
+        thumbnailSize: this.deps.thumbnailSize,
+      });
+      const portraits = template.portraits?.(new Materials(product, source.answers)) ?? [];
+      await photos.prepare(collectPhotos(product, source.answers, source.contributions), portraits);
+
       const document = template.build({ product, source, draft, photos }, this.deps.fonts);
       if (document.pages.length === 0) throw new Error(`Template ${template.id} produced no pages`);
 

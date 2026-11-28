@@ -6,6 +6,7 @@
   "description": "Layout: turns the AI draft and collected materials into a print-ready PDF and page previews",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "prebuild": "node ../../shared/portrait/scripts/fetch-model.mjs fp32",
     "build": "tsup",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
@@ -15,9 +16,11 @@
   },
   "dependencies": {
     "@px/contracts": "file:../../shared/contracts",
+    "@px/portrait": "file:../../shared/portrait",
     "@px/service-kit": "file:../../shared/service-kit",
     "fontkit": "^3.0.0",
     "jpeg-js": "^0.4.4",
+    "onnxruntime-web": "^1.22.0",
     "pdfkit": "^0.21.0",
     "png-js": "^3.0.0"
   },

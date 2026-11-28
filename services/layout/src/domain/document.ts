@@ -1,3 +1,5 @@
+import type { Silhouette } from '@px/portrait';
+
 /**
  * Layout document model: what goes where on every page, in PDF points (1/72 inch),
  * origin at the top-left corner of the trimmed page. Both renderers (print PDF and
@@ -80,6 +82,8 @@ export interface PhotoRef {
   height: number;
   /** Most characteristic vivid colour of the photo (hex), when it has one. */
   vivid?: string;
+  /** Outline of the person, for portraits the template may cut out (cover photos only). */
+  silhouette?: Silhouette;
 }
 
 export interface ImageElement {
@@ -91,6 +95,14 @@ export interface ImageElement {
   focusY?: number;
   /** Optional thin frame drawn on top. */
   stroke?: { color: string; width: number };
+  /** Where the whole photo is drawn, when the template placed it itself (portrait crops); `box` still clips. */
+  crop?: Box;
+  /**
+   * Draw only the person (clipped to the photo's silhouette, then to `box`): the same photo drawn
+   * again over the masthead puts the head in front of it. `outline` traces the person like a sticker;
+   * `overlays` repeat the shades laid over the photo below, so the two layers meet without a seam.
+   */
+  cutout?: { outline?: { color: string; width: number }; overlays?: RectElement[] };
 }
 
 export interface RectElement {
@@ -100,8 +112,8 @@ export interface RectElement {
   stroke?: { color: string; width: number; dash?: number[] };
   radius?: number;
   opacity?: number;
-  /** Vertical gradient fill (top → bottom) instead of `fill`: stops as [offset 0…1, opacity 0…1]. */
-  gradient?: { color: string; stops: Array<[number, number]> };
+  /** Gradient fill instead of `fill`, top → bottom (left → right when `horizontal`): stops as [offset 0…1, opacity 0…1]. */
+  gradient?: { color: string; stops: Array<[number, number]>; horizontal?: boolean };
 }
 
 export interface LineElement {
@@ -161,6 +173,11 @@ export function coverCrop(photo: Pick<PhotoRef, 'width' | 'height'>, box: Box, f
   const w = photo.width * scale;
   const h = photo.height * scale;
   return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) * focusY, w, h };
+}
+
+/** Where an image element draws the whole photo. */
+export function placement(element: Pick<ImageElement, 'photo' | 'box' | 'focusY' | 'crop'>): Box {
+  return element.crop ?? coverCrop(element.photo, element.box, element.focusY);
 }
 
 export function inset(box: Box, dx: number, dy = dx): Box {

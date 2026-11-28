@@ -95,6 +95,12 @@ export function shade(c: Composer, s: Styles, page: Page, from: number, to: numb
   c.rect(page, { x: -BLEED, y: from, w: A4.w + 2 * BLEED, h: to - from }, undefined, { gradient: { color: s.t.shadow, stops } });
 }
 
+/** Darkens the photo from the left edge to `width`, under cover lines, fading out to the right. */
+export function sideShade(c: Composer, s: Styles, page: Page, width: number, max: number) {
+  const stops: Array<[number, number]> = [0, 0.35, 0.7, 1].map((t) => [t, Math.round(max * (1 - t) ** 1.6 * 1000) / 1000]);
+  c.rect(page, { x: -BLEED, y: -BLEED, w: width + BLEED, h: A4.h + 2 * BLEED }, undefined, { gradient: { color: s.t.shadow, stops, horizontal: true } });
+}
+
 export function folio(c: Composer, s: Styles, page: Page, issue: Issue | undefined, number = c.pages.indexOf(page) + 1, color = s.t.muted) {
   const even = number % 2 === 0;
   const text = ['Cover Me', issue?.month].filter(Boolean).join('  ·  ');

@@ -6,7 +6,7 @@ import { InMemoryEventBus } from '@px/service-kit/testing';
 import { AppError } from '@px/service-kit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildLayoutApp } from '../src/app';
-import type { CatalogGateway } from '../src/application/ports';
+import type { CatalogGateway, PortraitFinder } from '../src/application/ports';
 import { collectPhotos, mediaKey } from '../src/domain/materials';
 import * as f from './fixtures/materials';
 
@@ -22,9 +22,11 @@ async function setup(
   source: LayoutSource | (() => Promise<LayoutSource>),
   media = mediaFor(f.glossySource()),
   catalog: CatalogGateway = { product: async (id) => f.products[id] },
+  portraits?: PortraitFinder,
 ) {
   const bus = new InMemoryEventBus();
   const app = await buildLayoutApp({
+    portraits,
     connectBus: async () => bus,
     projects: { layoutSource: typeof source === 'function' ? source : async () => source },
     catalog,
@@ -52,7 +54,7 @@ describe('layout worker', () => {
     await bus.drain();
 
     const event = bus.published.find((e) => e.type === 'layout.generated');
-    expect(event?.data).toMatchObject({ projectId: source.projectId, version: 3, template: 'glossy-magazine@3' });
+    expect(event?.data).toMatchObject({ projectId: source.projectId, version: 3, template: 'glossy-magazine@4' });
     const data = event!.data as { pdfUrl: string; pages: Array<{ previewUrl: string; kind: string; widthMm: number }> };
     expect(data.pages).toHaveLength(24);
     expect(data.pages[0]).toMatchObject({ kind: 'cover', widthMm: 210 });
@@ -68,6 +70,35 @@ describe('layout worker', () => {
     expect([...media.stored.keys()].some((k) => k.startsWith('thumb200_'))).toBe(true);
     // Working files are removed.
     expect(await readdir(dir)).toEqual([]);
+  });
+
+  it('traces the person on cover photos only, releases the tracer and cuts the head out on the cover', async () => {
+    const source = f.glossySource();
+    const traced: number[] = [];
+    let released = 0;
+    const portraits: PortraitFinder = {
+      silhouette: async (jpeg) => {
+        traced.push(jpeg.length);
+        return {
+          outline: [0.3, 1, 0.35, 0.3, 0.5, 0.12, 0.65, 0.3, 0.7, 1],
+          box: { x: 0.3, y: 0.12, w: 0.4, h: 0.88 },
+          head: { top: 0.12, cx: 0.5, width: 0.2, height: 0.2 },
+          area: 0.3,
+        };
+      },
+      release: async () => {
+        released++;
+      },
+    };
+    const { bus, media } = await setup(source, mediaFor(source), undefined, portraits);
+    await bus.publish('ai.draft_generated', draftEvent(source.projectId));
+    await bus.drain();
+
+    expect(traced).toHaveLength((source.answers.photos!.cover as unknown[]).length);
+    expect(released).toBe(1);
+    const data = bus.published.find((e) => e.type === 'layout.generated')!.data as { pages: Array<{ previewUrl: string }> };
+    const svg = media.files.get(data.pages[0]!.previewUrl.split('/').pop()!)!.toString();
+    expect(svg).toMatch(/<clipPath id="c\d+"><path d="M/);
   });
 
   it('skips projects that are no longer waiting for an automatic layout', async () => {

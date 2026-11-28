@@ -1,10 +1,11 @@
 import { createService, type EventBus, type Logger } from '@px/service-kit';
 import { LayoutService } from './application/layout-service';
-import type { CatalogGateway, MediaGateway, ProjectsGateway } from './application/ports';
+import type { CatalogGateway, MediaGateway, PortraitFinder, ProjectsGateway } from './application/ports';
 import { subscribeToEvents } from './events/subscriptions';
 import { registerRoutes } from './http/routes';
 import { createRenderer, imageProcessor } from './infrastructure/adapters';
 import { FontLibrary } from './infrastructure/fonts';
+import { OnnxPortraitFinder } from './infrastructure/portraits';
 
 export interface LayoutAppDeps {
   connectBus: (log: Logger) => Promise<EventBus>;
@@ -12,6 +13,10 @@ export interface LayoutAppDeps {
   catalog: CatalogGateway;
   media: MediaGateway;
   tmpDir: string;
+  /** MODNet weights for the cover cut-out; without them covers have no depth effect. */
+  portraitModel?: string;
+  /** Overrides the ONNX matting (tests). */
+  portraits?: PortraitFinder;
   thumbnailSize?: number;
   fontsDir?: string;
   logLevel?: string;
@@ -31,6 +36,7 @@ export async function buildLayoutApp(deps: LayoutAppDeps) {
     catalog: deps.catalog,
     media: deps.media,
     images: imageProcessor,
+    portraits: deps.portraits ?? new OnnxPortraitFinder(deps.portraitModel, service.app.log),
     renderer: createRenderer(fonts),
     fonts,
     bus,

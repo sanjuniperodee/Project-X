@@ -1,5 +1,5 @@
 import type { Draft, LayoutSource, MediaRef, Product } from '@px/contracts';
-import type { Box, Element, ImageElement, LayoutDocument, Page, PhotoRef, Size, TextStyle } from '../domain/document';
+import type { Box, Element, ImageElement, LayoutDocument, Page, PhotoRef, RectElement, Size, TextStyle } from '../domain/document';
 import { Materials } from '../domain/materials';
 import { fitText, Story, type Flowable, type FontMetrics } from '../domain/text';
 
@@ -19,6 +19,8 @@ export interface Template {
   /** Template id and revision, stored with every layout version. */
   readonly id: string;
   build(input: TemplateInput, metrics: FontMetrics): LayoutDocument;
+  /** Photos worth tracing the person on (the template cuts them out, e.g. the cover portrait). */
+  portraits?(materials: Materials): MediaRef[];
 }
 
 /** Page builder shared by the templates. */
@@ -63,6 +65,18 @@ export class Composer {
   image(page: Page, photo: PhotoRef, box: Box, options: Omit<ImageElement, 'type' | 'photo' | 'box'> = {}): void {
     this.used.add(photo.key);
     page.elements.push({ type: 'image', photo, box, focusY: photo.height > photo.width ? 0.3 : 0.5, ...options });
+  }
+
+  /**
+   * The person from a photo already placed at `crop`, drawn again inside `box` over whatever is on
+   * the page by now. The shades drawn over that photo are repeated on the cut-out, so it matches
+   * the photo below exactly. Nothing happens for photos without a silhouette.
+   */
+  cutout(page: Page, photo: PhotoRef, box: Box, crop: Box, options: { outline?: { color: string; width: number } } = {}): void {
+    if (!photo.silhouette) return;
+    const below = page.elements.findIndex((e) => e.type === 'image' && e.photo.key === photo.key && !e.cutout);
+    const overlays = page.elements.slice(below + 1).filter((e): e is RectElement => e.type === 'rect' && !!e.gradient);
+    page.elements.push({ type: 'image', photo, box, crop, cutout: { ...options, overlays } });
   }
 
   rect(page: Page, box: Box, fill: string | undefined, extra: Partial<Extract<Element, { type: 'rect' }>> = {}): void {

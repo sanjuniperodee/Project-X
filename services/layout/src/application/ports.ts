@@ -1,4 +1,5 @@
 import type { LayoutSource, Product, ProductId } from '@px/contracts';
+import type { Silhouette } from '@px/portrait';
 import type { LayoutDocument, Page } from '../domain/document';
 
 export interface ProjectsGateway {
@@ -35,4 +36,11 @@ export interface ImageProcessor {
 export interface Renderer {
   pdf(document: LayoutDocument, file: string, options: { photoPath: (key: string) => string | undefined; author: string }): Promise<void>;
   svg(page: Page, options: { thumbnail: (key: string) => Buffer | undefined }): string;
+}
+
+export interface PortraitFinder {
+  /** Outline of the person in an upright preview JPEG; null without a clear person (or without the model). */
+  silhouette(jpeg: Uint8Array): Promise<Silhouette | null>;
+  /** Frees what tracing holds (the model) once a layout's photos are prepared. */
+  release?(): Promise<void>;
 }

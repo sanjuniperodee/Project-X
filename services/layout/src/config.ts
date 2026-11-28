@@ -12,6 +12,8 @@ export const config = loadConfig({
   LAYOUT_TMP_DIR: z.string().default(tmpdir()),
   /** Longest side of the preview thumbnails, px. */
   PREVIEW_THUMBNAIL_SIZE: z.coerce.number().int().min(200).max(2000).default(640),
+  /** MODNet weights (onnx) for the cut-out cover portrait; by default next to the bundle or in shared/portrait/models. */
+  PORTRAIT_MODEL: z.string().optional(),
   /** Optional directory with the brand TTF files (the build puts them next to the bundle). */
   FONTS_DIR: z.string().optional(),
 });

@@ -8,6 +8,7 @@ WORKDIR /app
 COPY tsconfig.base.json ./
 COPY shared/contracts/package.json shared/contracts/package-lock.json shared/contracts/
 COPY shared/service-kit/package.json shared/service-kit/package-lock.json shared/service-kit/
+COPY shared/portrait/package.json shared/portrait/
 COPY services/${SERVICE}/package.json services/${SERVICE}/package-lock.json services/${SERVICE}/
 RUN --mount=type=cache,target=/root/.npm \
     (cd shared/contracts && npm ci) && \

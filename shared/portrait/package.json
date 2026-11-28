@@ -1,0 +1,20 @@
+{
+  "name": "@px/portrait",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Portrait cutout shared by the layout service and the browser: MODNet input, silhouette tracing, portrait crops",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "fetch-model": "node scripts/fetch-model.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2"
+  }
+}

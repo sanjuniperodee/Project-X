@@ -1,5 +1,5 @@
 # Convenience commands. Every package is independent: these targets just loop over them.
-SHARED   := shared/contracts shared/service-kit
+SHARED   := shared/contracts shared/service-kit shared/portrait
 SERVICES := services/catalog services/gateway services/projects services/payments services/media services/ai services/sales services/layout
 APPS     := $(SERVICES) frontend
 ALL      := $(SHARED) $(APPS)
@@ -13,7 +13,7 @@ typecheck: ## Type-check every package
 	@for p in $(ALL); do echo "→ $$p"; (cd $$p && npm run typecheck) || exit 1; done
 
 test: ## Run tests (integration tests need Postgres: `make infra`)
-	@for p in shared/contracts $(SERVICES); do echo "→ $$p"; (cd $$p && npm test) || exit 1; done
+	@for p in shared/contracts shared/portrait $(SERVICES); do echo "→ $$p"; (cd $$p && npm test) || exit 1; done
 
 build: ## Build every service bundle and the frontend
 	@for p in $(APPS); do echo "→ $$p"; (cd $$p && npm run build) || exit 1; done

@@ -51,7 +51,10 @@ const MONTHS_NOMINATIVE = ['январь', 'февраль', 'март', 'апр
 const DEFAULT_TAGLINE = 'Специальный выпуск о человеке, которого мы любим';
 
 export const glossyTemplate: Template = {
-  id: 'glossy-magazine@3',
+  id: 'glossy-magazine@4',
+
+  // Cover candidates: the person is traced on them for the cut-out head over the masthead.
+  portraits: (materials) => materials.photos('photos', 'cover'),
 
   build(input: TemplateInput, metrics: FontMetrics) {
     const target = PAGE_COUNTS[input.source.formatId] ?? 24;
@@ -104,7 +107,8 @@ function buildMagazine(input: TemplateInput, metrics: FontMetrics, target: numbe
   const childhood = c.resolve(m.photos('photos', 'childhood'));
   const owner = [...coverPhotos, ...gallery];
   const portraits = owner.filter((p) => p.height > p.width * 1.05);
-  const coverPhoto = coverPhotos[0] ?? portraits[0] ?? owner[0];
+  // The first cover photo with a clear person wins: it can stand in front of the masthead.
+  const coverPhoto = coverPhotos.find((p) => p.silhouette) ?? coverPhotos[0] ?? portraits[0] ?? owner[0];
   if (!coverPhoto) c.warn('Нет ни одного фото для обложки: обложка свёрстана без портрета');
   const nextPortrait = () => portraits.find((p) => !c.isUsed(p)) ?? owner.find((p) => !c.isUsed(p));
   const nextPhoto = () => gallery.find((p) => !c.isUsed(p)) ?? owner.find((p) => !c.isUsed(p));

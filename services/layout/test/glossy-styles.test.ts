@@ -1,6 +1,7 @@
 import type { LayoutSource } from '@px/contracts';
 import { describe, expect, it } from 'vitest';
 import { hexToRgb, rgbToHsl, vividColor } from '../src/domain/color';
+import { mm } from '../src/domain/document';
 import { FontLibrary } from '../src/infrastructure/fonts';
 import { glossyTemplate } from '../src/templates/glossy';
 import { GLOSSY_STYLES, themeFor } from '../src/templates/glossy-themes';
@@ -36,7 +37,7 @@ describe('Cover Me styles', () => {
     expect(doc.pages).toHaveLength(24);
     expect(doc.pages[0]!.kind).toBe('cover');
     expect(doc.pages.at(-1)!.kind).toBe('back');
-    expect(doc.template).toBe('glossy-magazine@3');
+    expect(doc.template).toBe('glossy-magazine@4');
   });
 
   it('sets each style in its own typefaces and colours', () => {
@@ -77,6 +78,67 @@ describe('Cover Me styles', () => {
     // Without the AI the template words its own, still personal, titles.
     expect(build(withStyle('vogue')).pages.map((p) => p.kind)).not.toContain('horoscope');
     expect(texts(build(withStyle('vogue')), 'tastes')).toContain('Что любит Айгерим');
+  });
+});
+
+describe('Cover Me portrait covers', () => {
+  /** A head-and-shoulders outline with room above the head. */
+  const silhouette = (top: number) => ({
+    outline: [0.3, 1, 0.32, 0.55, 0.38, top + 0.05, 0.5, top, 0.62, top + 0.05, 0.68, 0.55, 0.7, 1],
+    box: { x: 0.3, y: top, w: 0.4, h: 1 - top },
+    head: { top, cx: 0.5, width: 0.2, height: 0.2 },
+    area: 0.35,
+  });
+  const traced = (top: number): PhotoLibrary => ({
+    get: (ref) => ({ key: `${ref.id}.jpg`, width: 3000, height: 4000, ...(ref.id === 'cover0' ? { silhouette: silhouette(top) } : {}) }),
+  });
+  const cover = (style: string, library: PhotoLibrary) =>
+    glossyTemplate.build({ product: f.products.glossy, source: withStyle(style), draft: f.glossyDraft, photos: library }, fonts).pages[0]!;
+  const cutouts = (page: ReturnType<typeof cover>) => page.elements.filter((e) => e.type === 'image' && e.cutout);
+
+  it.each(['vogue', 'tabloid', 'noir'])('puts the head in front of the masthead in the %s style', (style) => {
+    const page = cover(style, traced(0.12));
+    const [cutout] = cutouts(page);
+    expect(cutout).toBeDefined();
+    const photo = page.elements.find((e) => e.type === 'image' && !e.cutout)!;
+    // Same placement as the photo below, drawn after the masthead.
+    expect(cutout!.type === 'image' && photo.type === 'image' && cutout!.crop).toEqual(photo.type === 'image' && photo.crop);
+    const masthead = page.elements.findIndex((e) => e.type === 'text' && e.lines[0]!.pieces.some((p) => /cover/i.test(p.text)));
+    expect(page.elements.indexOf(cutout!)).toBeGreaterThan(masthead);
+    // The head top lands inside the masthead band.
+    if (cutout!.type === 'image') {
+      const headTop = cutout!.crop!.y + 0.12 * cutout!.crop!.h;
+      expect(headTop).toBeGreaterThan(mm(15));
+      expect(headTop).toBeLessThan(mm(40));
+      expect(cutout!.cutout!.overlays!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps the tender print calm and gives up the cut-out without headroom', () => {
+    expect(cutouts(cover('tender', traced(0.12)))).toHaveLength(0);
+    // A head touching the top edge of the photo would show a flat cut in the masthead.
+    expect(cutouts(cover('vogue', traced(0)))).toHaveLength(0);
+  });
+
+  it('keeps cover lines and the burst off the face', () => {
+    const page = cover('tabloid', traced(0.12));
+    const photo = page.elements.find((e) => e.type === 'image' && !e.cutout)!;
+    if (photo.type !== 'image') throw new Error('no photo');
+    const headLeft = photo.crop!.x + (0.5 - 0.1) * photo.crop!.w;
+    const headBottom = photo.crop!.y + (0.12 + 0.2) * photo.crop!.h;
+    // Cover-line bars (the barcode below the name is black too).
+    const bars = page.elements.filter((e) => e.type === 'rect' && e.fill === '#000000' && e.box.y < mm(200));
+    expect(bars.length).toBeGreaterThan(0);
+    for (const bar of bars) if (bar.type === 'rect') expect(bar.box.x + bar.box.w).toBeLessThanOrEqual(headLeft);
+    const burst = page.elements.find((e) => e.type === 'path');
+    if (burst?.type === 'path') {
+      const ys = burst.d.match(/-?\d+\.\d+/g)!.map(Number).filter((_, i) => i % 2 === 1);
+      expect(Math.min(...ys)).toBeGreaterThan(headBottom);
+    }
+  });
+
+  it('lays out a photo without a silhouette as before', () => {
+    expect(cutouts(cover('vogue', photos))).toHaveLength(0);
   });
 });
 

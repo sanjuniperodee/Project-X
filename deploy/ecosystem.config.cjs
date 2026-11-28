@@ -113,14 +113,15 @@ module.exports = {
       ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY || '',
       AI_MODEL: e.AI_MODEL || 'claude-opus-5-5',
     }),
-    // Automatic layout: print PDF + previews from the AI draft (pdfkit, no browser). Peak ~280 MB on a 36-page magazine.
+    // Automatic layout: print PDF + previews from the AI draft (pdfkit, no browser). Peak ~280 MB on a 36-page magazine;
+    // tracing the cover portrait (MODNet in a worker thread, ~2.5 s) briefly adds ~330 MB before the PDF is built.
     {
       ...service('layout', {
         PROJECTS_URL: url('projects'),
         MEDIA_URL: url('media'),
         LAYOUT_TMP_DIR: path.join(ROOT, 'tmp', 'layout'),
       }),
-      max_memory_restart: '400M',
+      max_memory_restart: '600M',
     },
     service('sales', {
       DATABASE_URL: PG('px_sales'),

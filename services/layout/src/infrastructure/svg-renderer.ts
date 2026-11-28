@@ -1,4 +1,5 @@
-import { coverCrop, cropMarkLines, type Element, type Page } from '../domain/document';
+import { outlinePath } from '@px/portrait';
+import { cropMarkLines, placement, type Element, type Page } from '../domain/document';
 import type { FontLibrary } from './fonts';
 
 export interface SvgRenderOptions {
@@ -41,7 +42,7 @@ export function renderSvg(page: Page, fonts: FontLibrary, options: SvgRenderOpti
           const stops = element.gradient.stops
             .map(([offset, opacity]) => `<stop offset="${n(offset)}" stop-color="${esc(element.gradient!.color)}" stop-opacity="${n(opacity)}"/>`)
             .join('');
-          defs.push(`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>`);
+          defs.push(`<linearGradient id="${id}" x1="0" y1="0" x2="${element.gradient.horizontal ? 1 : 0}" y2="${element.gradient.horizontal ? 0 : 1}">${stops}</linearGradient>`);
           fill = `url(#${id})`;
         }
         const attrs = [
@@ -78,9 +79,28 @@ export function renderSvg(page: Page, fonts: FontLibrary, options: SvgRenderOpti
             ? `<clipPath id="${clip}"><ellipse cx="${n(x + w / 2)}" cy="${n(y + h / 2)}" rx="${n(w / 2)}" ry="${n(h / 2)}"/></clipPath>`
             : `<clipPath id="${clip}"><rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}"/></clipPath>`,
         );
+        const crop = placement(element);
         const thumb = options.thumbnail(element.photo.key);
+        if (element.cutout) {
+          // The person only: the box clips the group, the silhouette clips the photo inside it.
+          const silhouette = element.photo.silhouette;
+          if (!silhouette || !thumb) return;
+          const d = outlinePath(silhouette, crop);
+          const person = `c${clipCount++}`;
+          defs.push(`<clipPath id="${person}"><path d="${d}"/></clipPath>`);
+          const { outline, overlays = [] } = element.cutout;
+          body.push(`<g clip-path="url(#${clip})">`);
+          if (outline) {
+            body.push(`<path d="${d}" fill="none" stroke="${esc(outline.color)}" stroke-width="${n(outline.width * 2)}" stroke-linejoin="round"/>`);
+          }
+          body.push(
+            `<g clip-path="url(#${person})"><image x="${n(crop.x)}" y="${n(crop.y)}" width="${n(crop.w)}" height="${n(crop.h)}" preserveAspectRatio="none" href="data:image/jpeg;base64,${thumb.toString('base64')}"/>`,
+          );
+          for (const overlay of overlays) draw(overlay);
+          body.push('</g></g>');
+          return;
+        }
         if (thumb) {
-          const crop = coverCrop(element.photo, element.box, element.focusY);
           body.push(
             `<image clip-path="url(#${clip})" x="${n(crop.x)}" y="${n(crop.y)}" width="${n(crop.w)}" height="${n(crop.h)}" preserveAspectRatio="none" href="data:image/jpeg;base64,${thumb.toString('base64')}"/>`,
           );

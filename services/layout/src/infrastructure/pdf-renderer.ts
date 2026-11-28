@@ -2,7 +2,8 @@ import { createWriteStream } from 'node:fs';
 import { once } from 'node:events';
 import { finished } from 'node:stream/promises';
 import PDFDocument from 'pdfkit';
-import { BLEED, coverCrop, cropMarkLines, type Element, type LayoutDocument, type Page } from '../domain/document';
+import { outlinePath } from '@px/portrait';
+import { BLEED, cropMarkLines, placement, type Element, type LayoutDocument, type Page } from '../domain/document';
 import type { FontLibrary } from './fonts';
 
 export interface PdfRenderOptions {
@@ -80,7 +81,7 @@ function drawElement(pdf: PDFKit.PDFDocument, element: Element, useFont: (key: s
         if (element.stroke.dash) pdf.dash(element.stroke.dash[0]!, { space: element.stroke.dash[1] ?? element.stroke.dash[0]! });
       }
       if (element.gradient) {
-        const gradient = pdf.linearGradient(x, y, x, y + h);
+        const gradient = element.gradient.horizontal ? pdf.linearGradient(x, y, x + w, y) : pdf.linearGradient(x, y, x, y + h);
         for (const [offset, opacity] of element.gradient.stops) gradient.stop(offset, element.gradient.color, opacity);
         pdf.fill(gradient);
       } else if (element.fill && element.stroke) pdf.fillAndStroke(element.fill, element.stroke.color);
@@ -120,11 +121,30 @@ function drawElement(pdf: PDFKit.PDFDocument, element: Element, useFont: (key: s
     case 'image': {
       const file = options.photoPath(element.photo.key);
       const { x, y, w, h } = element.box;
+      const crop = placement(element);
+      if (element.cutout) {
+        // The person only, over what was drawn before (the masthead): the same embedded photo, clipped twice.
+        const silhouette = element.photo.silhouette;
+        if (!silhouette || !file) return;
+        const d = outlinePath(silhouette, crop);
+        const { outline, overlays = [] } = element.cutout;
+        pdf.save();
+        pdf.rect(x, y, w, h).clip();
+        if (outline) {
+          pdf.save();
+          pdf.path(d).lineWidth(outline.width * 2).lineJoin('round').stroke(outline.color);
+          pdf.restore();
+        }
+        pdf.path(d).clip();
+        pdf.image(file, crop.x, crop.y, { width: crop.w, height: crop.h });
+        for (const overlay of overlays) drawElement(pdf, overlay, useFont, options);
+        pdf.restore();
+        return;
+      }
       pdf.save();
       if (element.shape === 'circle') pdf.ellipse(x + w / 2, y + h / 2, w / 2, h / 2).clip();
       else pdf.rect(x, y, w, h).clip();
       if (file) {
-        const crop = coverCrop(element.photo, element.box, element.focusY);
         // Width/height are the upright size; pdfkit applies the EXIF rotation itself.
         pdf.image(file, crop.x, crop.y, { width: crop.w, height: crop.h });
       } else {
