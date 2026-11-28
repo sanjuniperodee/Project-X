@@ -1,5 +1,5 @@
 import { AppError } from '@px/service-kit';
-import { graphData, graphError, parseGraphProduct, productInfo, type WaProduct, type WantedProduct } from '../domain/catalog';
+import { graphData, graphError, NO_CATALOG, parseGraphProduct, productInfo, type WaProduct, type WantedProduct } from '../domain/catalog';
 import type { CatalogGatewayWa } from '../application/ports';
 import type { GowaWhatsApp } from './gowa';
 
@@ -16,6 +16,7 @@ const DOCS = {
 } as const;
 type DocKey = keyof typeof DOCS;
 const IMAGE_SIZE = 400;
+
 
 export class WaCatalog implements CatalogGatewayWa {
   private actor: { lid: string; personId: string } | null = null;
@@ -71,6 +72,10 @@ export class WaCatalog implements CatalogGatewayWa {
     await this.mutate('remove', 'xfb_whatsapp_catalog_delete_product', { biz_jid: (await this.who()).lid, product_ids: ids });
   }
 
+  commerceExperience(phone: string) {
+    return this.gowa.commerceExperience(phone);
+  }
+
   uploadImages(images: { data: Uint8Array; name: string; mime: string }[]) {
     return this.gowa.uploadProductImages(images);
   }
@@ -104,6 +109,9 @@ export class WaCatalog implements CatalogGatewayWa {
     if (!problem) return;
     if (/RecoveryRequired/i.test(problem)) {
       throw AppError.conflict('WhatsApp просит подтвердить почту бизнеса в приложении WhatsApp Business на телефоне студии');
+    }
+    if (key === 'owner' && /найти объект|could not find|nonexisting|does not exist/i.test(problem)) {
+      throw AppError.conflict(NO_CATALOG);
     }
     const stale = /persisted query|document|doc_id|not found|Unknown/i.test(problem) ? ` (возможно, WhatsApp сменил запрос «${key}» — WA_CATALOG_DOCS)` : '';
     throw new AppError('unavailable', `WhatsApp: ${problem}${stale}`);

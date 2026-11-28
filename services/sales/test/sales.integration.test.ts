@@ -137,6 +137,7 @@ const waCatalog: CatalogGatewayWa = {
   remove: async (ids) => {
     for (const id of ids) waStore.splice(waStore.findIndex((p) => p.id === id), 1);
   },
+  commerceExperience: async () => 'catalog',
   uploadImages: async (images) => images.map((i) => `https://mmg.whatsapp.net/${i.name}`),
   sendProduct: async (chatId, card) => {
     cardsSent.push({ chatId, productId: card.productId, body: card.body });

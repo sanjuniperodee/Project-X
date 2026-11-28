@@ -161,6 +161,8 @@ export interface CatalogGatewayWa {
   create(w: import('../domain/catalog').WantedProduct, imageUrls: string[]): Promise<import('../domain/catalog').WaProduct>;
   edit(id: string, w: import('../domain/catalog').WantedProduct, imageUrls: string[]): Promise<import('../domain/catalog').WaProduct>;
   remove(ids: string[]): Promise<void>;
+  /** 'catalog' when the number has a catalog (created in the WhatsApp Business app); null — unknown. */
+  commerceExperience(phone: string): Promise<string | null>;
   uploadImages(images: { data: Uint8Array; name: string; mime: string }[]): Promise<string[]>;
   sendProduct(chatId: string, card: { productId: string; title: string; description: string; price: number; retailerId: string; url: string; imageUrl: string | null; imageCount: number; body: string }): Promise<string | null>;
   sendCatalogLink(chatId: string, text: string, preview: { title: string; description: string; imageUrl: string | null }): Promise<string | null>;

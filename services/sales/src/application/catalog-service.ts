@@ -1,6 +1,6 @@
 import type { CatalogStatus, ProductId } from '@px/contracts';
 import { AppError, type Logger } from '@px/service-kit';
-import { catalogLink, planCatalog, retailerIdOf, wantedProducts, type WaProduct } from '../domain/catalog';
+import { catalogLink, NO_CATALOG, planCatalog, retailerIdOf, wantedProducts, type WaProduct } from '../domain/catalog';
 import type { Links } from '../domain/links';
 import type { CatalogGatewayWa, CatalogStore, CatalogGateway, MediaReader, WhatsAppGateway } from './ports';
 
@@ -35,11 +35,18 @@ export class CatalogService {
     const { store, catalog, whatsapp, links } = this.deps;
     const [products, photos, copy, wa] = await Promise.all([catalog.products(), store.photos(), store.products(), whatsapp.status()]);
     const wanted = wantedProducts(products, (id) => links.brand(id));
+    const experience = this.deps.wa && wa.loggedIn && wa.phone ? await this.deps.wa.commerceExperience(wa.phone).catch(() => null) : null;
     const byRetailer = new Map(copy.map((p) => [p.retailerId, p]));
     const photoOf = new Map(photos.map((p) => [p.productId, p]));
     return {
       available: !!this.deps.wa && wa.loggedIn,
-      problem: !this.deps.wa ? 'WhatsApp не настроен' : wa.loggedIn ? null : 'Номер WhatsApp не привязан',
+      problem: !this.deps.wa
+        ? 'WhatsApp не настроен'
+        : !wa.loggedIn
+          ? 'Номер WhatsApp не привязан'
+          : experience && experience !== 'catalog'
+            ? NO_CATALOG
+            : null,
       catalogUrl: wa.phone ? catalogLink(wa.phone) : null,
       lastSyncAt: copy.length ? new Date(Math.max(...copy.map((p) => p.syncedAt.getTime()))).toISOString() : null,
       products: products.map((p) => {

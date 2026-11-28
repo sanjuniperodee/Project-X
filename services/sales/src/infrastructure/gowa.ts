@@ -66,6 +66,12 @@ export class GowaWhatsApp implements WhatsAppGateway {
     await this.json('POST', `/devices/${DEVICE}/logout`);
   }
 
+  /** Business profile of the linked number: commerce_experience=catalog once the catalog exists in the app. */
+  async commerceExperience(phone: string): Promise<string | null> {
+    const res = await this.json<{ results?: { profile_options?: { commerce_experience?: string } } }>('GET', `/user/business-profile?phone=${encodeURIComponent(jidFromChatId(phone))}`);
+    return res.results?.profile_options?.commerce_experience ?? null;
+  }
+
   // ---------- WhatsApp Business catalog (GOWA build with the catalog patch, same as MyBooks / DoseWear) ----------
 
   /** GraphQL operation of the catalog on graph.facebook.com with the number's token (kept inside the gateway). */

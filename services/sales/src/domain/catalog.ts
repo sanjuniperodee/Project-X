@@ -174,4 +174,8 @@ export function cardText(card: InboundCard): string {
   return `[клиент прислал корзину из каталога WhatsApp: ${card.itemCount || '?'} шт.${card.total ? `, ${formatTenge(card.total)}` : ''}${card.note ? `, комментарий: «${card.note}»` : ''}]`;
 }
 
+/** WhatsApp creates the catalog itself when the first product is added in the app — not through the API. */
+export const NO_CATALOG =
+  'У номера ещё нет каталога. Откройте WhatsApp Business на телефоне студии → «Инструменты для бизнеса» → «Каталог» и добавьте любой первый товар — потом синхронизация заработает (товар, добавленный вручную, она не трогает).';
+
 export const catalogLink = (phone: string) => `https://wa.me/c/${phone.replace(/\D/g, '')}`;
