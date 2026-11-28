@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -44,6 +45,7 @@ export function Workspace({
   copy,
   inviteUrl,
   returnedFrom,
+  voiceHref,
 }: {
   editKey: string;
   initialProject: ProjectView;
@@ -52,6 +54,8 @@ export function Workspace({
   inviteUrl: string;
   /** Set when the customer came back from the payment page. */
   returnedFrom: PaymentKind | null;
+  /** The voice studio for this project. */
+  voiceHref: string;
 }) {
   const router = useRouter();
   const [project, setProject] = useState(initialProject);
@@ -129,6 +133,20 @@ export function Workspace({
         )}
       </header>
 
+      {editable && (
+        <Link
+          href={voiceHref}
+          className="group flex flex-wrap items-center justify-between gap-x-8 gap-y-3 rounded-card bg-ink px-6 py-5 text-bg transition-opacity hover:opacity-90"
+        >
+          <span>
+            <span className="block font-display text-2xl font-semibold">Не хочется печатать? Расскажите голосом</span>
+            <span className="mt-1 block max-w-[62ch] leading-relaxed opacity-75">
+              Редактор задаст вопросы вслух и сам заполнит анкету. Фото можно перетащить на экран, макет придёт через пару минут после разговора.
+            </span>
+          </span>
+          <span className="font-semibold underline decoration-2 underline-offset-4">Открыть голосовую студию</span>
+        </Link>
+      )}
       <LayoutReview editKey={editKey} project={project} onChange={setProject} />
       {/* Before the first layout the draft shows what the texts will be; after it, the layout says it all. */}
       {project.draft && !project.layout && <DraftPreview draft={project.draft} cardsTitle={copy.draftCardsTitle} />}

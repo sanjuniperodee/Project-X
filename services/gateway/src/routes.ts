@@ -31,5 +31,6 @@ export function routeTable(config: GatewayConfig): Route[] {
     { prefix: '/api/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/payments' },
     { prefix: '/api/webhooks/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/webhooks' },
     { prefix: '/api/media', upstream: config.MEDIA_URL, rewritePrefix: '' },
+    { prefix: '/api/voice', upstream: config.VOICE_URL, rewritePrefix: '/voice' },
   ];
 }

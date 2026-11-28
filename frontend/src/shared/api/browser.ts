@@ -6,11 +6,13 @@ import {
   PaymentView,
   ProjectView,
   UploadResponse,
+  VoiceSessionView,
   z,
   type Answers,
   type CreateProjectRequestInput,
   type PaymentKind,
   type StepAnswers,
+  type VoiceMode,
 } from '@px/contracts';
 import { request } from './core';
 
@@ -26,6 +28,11 @@ const key = encodeURIComponent;
 export const browserApi = {
   createProject: (body: CreateProjectRequestInput) =>
     call('/projects', CreateProjectResponse, { method: 'POST', body }),
+
+  project: (editKey: string) => call(`/projects/${key(editKey)}`, ProjectView),
+
+  /** Starts a voice conversation: which provider to use and its credential. */
+  voiceSession: (editKey: string, mode: VoiceMode) => call('/voice/sessions', VoiceSessionView, { method: 'POST', body: { editKey, mode } }),
 
   saveStep: (editKey: string, stepId: string, answers: StepAnswers) =>
     call(`/projects/${key(editKey)}/steps/${key(stepId)}`, ProjectView, { method: 'PUT', body: { answers } }),

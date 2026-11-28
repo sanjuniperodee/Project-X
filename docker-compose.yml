@@ -118,6 +118,21 @@ services:
       projects: { condition: service_healthy }
       media: { condition: service_healthy }
 
+  voice:
+    <<: *service
+    build: { <<: *service-build, args: { SERVICE: voice } }
+    environment:
+      <<: *service-env
+      PORT: 4108
+      PROJECTS_URL: http://projects:4102
+      # Without an ElevenLabs agent the voice studio runs on the browser's own speech (scripted interviewer).
+      VOICE_PROVIDER: ${VOICE_PROVIDER:-browser}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID:-}
+    depends_on:
+      catalog: { condition: service_healthy }
+      projects: { condition: service_healthy }
+
   gateway:
     <<: *service
     build: { <<: *service-build, args: { SERVICE: gateway } }
@@ -127,12 +142,13 @@ services:
       PROJECTS_URL: http://projects:4102
       MEDIA_URL: http://media:4104
       SALES_URL: http://sales:4106
+      VOICE_URL: http://voice:4108
       CORS_ORIGINS: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
       # The frontend proxies browser calls and forwards the client IP.
       TRUST_PROXY: "true"
     ports: ["8080:8080"]
-    depends_on: [catalog, projects, payments, media, sales]
+    depends_on: [catalog, projects, payments, media, sales, voice]
 
   frontend:
     build: { context: ., dockerfile: frontend/Dockerfile }

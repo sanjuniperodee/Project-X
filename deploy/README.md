@@ -23,7 +23,7 @@ elsewhere and only unpacked.
 |---|---|
 | px-frontend | [::1]:3070 (Next with `HOSTNAME=localhost`, needed for brand-domain rewrites) |
 | px-gateway | 127.0.0.1:3071 |
-| px-catalog / px-projects / px-payments / px-media / px-ai / px-sales / px-layout | 127.0.0.1:3072…3078 |
+| px-catalog / px-projects / px-payments / px-media / px-ai / px-sales / px-layout / px-voice | 127.0.0.1:3072…3079 |
 | px-kaspi-pos / px-gowa | 127.0.0.1:3082 / 3083 (`deploy/sidecars.sh`) |
 | px-nats | 127.0.0.1:4232, monitoring 127.0.0.1:8232 |
 
@@ -44,6 +44,8 @@ elsewhere and only unpacked.
   the Kaspi deposit / balance; customers get a message on every status change. Chats, hand-offs and studio replies:
   `/admin/chats`; a trial dialog without real orders: `/admin/integrations`. `STUDIO_PHONE` in `~/px/.env` gets hand-off
   and payment alerts. `BOT_ENABLED=false` keeps notifications but stops bot replies.
+- **Voice studio** (`px-voice`, 127.0.0.1:3079): `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` in `~/px/.env` switch on the live agent;
+  without them the studio runs on the browser's speech. Create or update the agent from the repo: `services/voice/README.md`.
 - **Claude**: the Anthropic key from MyBooks settings (`ANTHROPIC_API_KEY`, used by `px-ai` and `px-sales`).
 - **S3**: MyBooks' PS Cloud Object Storage keys, separate prefix `px/`.
 

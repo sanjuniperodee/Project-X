@@ -17,6 +17,8 @@ export interface BrandDefinition {
   metadata: { title: string; description: string };
   Logo: ComponentType<{ className?: string }>;
   Landing: ComponentType<LandingProps>;
+  /** Optional widget for the voice studio, fed by the live answers (`useStudioAnswers`). */
+  VoicePreview?: ComponentType;
   /** Short call to action used in the header and final blocks. */
   cta: string;
   /** Classes for the site chrome, so app pages wear the brand too. */

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PaymentKind } from '@px/contracts';
 import { findBrand } from '@/brands';
+import { VoiceReturn } from '@/features/voice-studio/voice-return';
 import { Workspace } from '@/features/workspace/workspace';
 import { api } from '@/shared/api/server';
 import { ApiError } from '@/shared/api/core';
@@ -33,6 +34,7 @@ export default async function WorkspacePage({ params, searchParams }: Props) {
 
   return (
     <Container wide className="py-10 lg:py-14">
+      {payment.success && <VoiceReturn editKey={editKey} voiceHref={`${links.href(`/p/${editKey}/voice`)}?payment=${payment.data}`} />}
       <Workspace
         key={project.updatedAt}
         editKey={editKey}
@@ -40,6 +42,7 @@ export default async function WorkspacePage({ params, searchParams }: Props) {
         product={product}
         inviteUrl={inviteUrl}
         returnedFrom={payment.success ? payment.data : null}
+        voiceHref={links.href(`/p/${editKey}/voice`)}
         copy={{
           title: brand.copy.workspaceTitle(project.subject),
           submitLabel: brand.copy.submitLabel,

@@ -1,6 +1,7 @@
 import type { BrandDefinition } from '../types';
 import { cn } from '@/shared/lib/cn';
 import { GlossyLanding } from './landing';
+import { GlossyVoicePreview } from './voice-preview';
 
 function Logo({ className }: { className?: string }) {
   return <span className={cn('font-display text-[26px] leading-none font-black tracking-[-0.04em]', className)}>COVER ME</span>;
@@ -16,6 +17,7 @@ export const glossyBrand: BrandDefinition = {
   },
   Logo,
   Landing: GlossyLanding,
+  VoicePreview: GlossyVoicePreview,
   chrome: { header: 'border-b-2 border-black bg-white', footer: 'border-t-2 border-black bg-white' },
   cta: 'Собрать журнал',
   copy: {

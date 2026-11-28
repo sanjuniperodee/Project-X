@@ -18,7 +18,7 @@ function readEnv(file) {
 }
 const e = readEnv(path.join(ROOT, '.env'));
 
-const PORTS = { frontend: 3070, gateway: 3071, catalog: 3072, projects: 3073, payments: 3074, media: 3075, ai: 3076, sales: 3077, layout: 3078 };
+const PORTS = { frontend: 3070, gateway: 3071, catalog: 3072, projects: 3073, payments: 3074, media: 3075, ai: 3076, sales: 3077, layout: 3078, voice: 3079 };
 const NATS_URL = 'nats://127.0.0.1:4232';
 const url = (svc) => `http://127.0.0.1:${PORTS[svc]}`;
 const PG = (db) => `postgres://px:${encodeURIComponent(e.POSTGRES_PASSWORD)}@127.0.0.1:5432/${db}`;
@@ -123,6 +123,14 @@ module.exports = {
       }),
       max_memory_restart: '600M',
     },
+    // Voice studio: issues ElevenLabs conversation tokens and briefs the agent. No agent configured → browser speech.
+    service('voice', {
+      PROJECTS_URL: url('projects'),
+      VOICE_PROVIDER: e.VOICE_PROVIDER || (e.ELEVENLABS_API_KEY && e.ELEVENLABS_AGENT_ID ? 'elevenlabs' : 'browser'),
+      ELEVENLABS_API_KEY: e.ELEVENLABS_API_KEY || '',
+      ELEVENLABS_AGENT_ID: e.ELEVENLABS_AGENT_ID || '',
+      VOICE_TRANSPORT: e.VOICE_TRANSPORT || 'webrtc',
+    }),
     service('sales', {
       DATABASE_URL: PG('px_sales'),
       PROJECTS_URL: url('projects'),
@@ -144,6 +152,7 @@ module.exports = {
       PROJECTS_URL: url('projects'),
       MEDIA_URL: url('media'),
       SALES_URL: url('sales'),
+      VOICE_URL: url('voice'),
       CORS_ORIGINS: e.CORS_ORIGINS || e.FRONTEND_URL,
       ADMIN_TOKEN: e.ADMIN_TOKEN,
       // Only the frontend (same host) talks to the gateway; nginx overwrites X-Forwarded-For with the real client IP.

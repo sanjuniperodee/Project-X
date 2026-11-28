@@ -21,7 +21,7 @@ beforeAll(async () => {
     CATALOG_URL: url,
     PROJECTS_URL: url,
     PAYMENTS_URL: url,
-    MEDIA_URL: url, SALES_URL: 'http://sales.test',
+    MEDIA_URL: url, SALES_URL: 'http://sales.test', VOICE_URL: 'http://voice.test',
     CORS_ORIGINS: 'http://localhost:3000',
     ADMIN_TOKEN,
     TRUST_PROXY: false,

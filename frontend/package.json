@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@elevenlabs/client": "^1.38.0",
     "@px/contracts": "file:../shared/contracts",
     "@px/portrait": "file:../shared/portrait",
     "next": "^16.4.6",

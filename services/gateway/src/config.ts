@@ -8,6 +8,8 @@ export const config = loadConfig({
   MEDIA_URL: z.url(),
   /** Sales service (AI seller, WhatsApp). Only studio routes go there. */
   SALES_URL: z.url().default('http://127.0.0.1:4106'),
+  /** Voice service (spoken interview sessions). */
+  VOICE_URL: z.url().default('http://127.0.0.1:4108'),
   /** Comma-separated list of allowed browser origins. */
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
   /** Shared secret for studio back-office endpoints. */

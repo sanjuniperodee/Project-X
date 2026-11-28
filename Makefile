@@ -1,6 +1,6 @@
 # Convenience commands. Every package is independent: these targets just loop over them.
 SHARED   := shared/contracts shared/service-kit shared/portrait
-SERVICES := services/catalog services/gateway services/projects services/payments services/media services/ai services/sales services/layout
+SERVICES := services/catalog services/gateway services/projects services/payments services/media services/ai services/sales services/layout services/voice
 APPS     := $(SERVICES) frontend
 ALL      := $(SHARED) $(APPS)
 

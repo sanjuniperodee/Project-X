@@ -66,7 +66,8 @@ export function CreateProjectForm({ product, copy }: { product: Product; copy: C
     try {
       const created = await browserApi.createProject(parsed.data);
       if (handoff) await applyHandoff(created.editKey, handoff);
-      router.push(href(`/p/${created.editKey}`));
+      // The voice studio opens first: it offers the conversation and a way to the forms.
+      router.push(href(`/p/${created.editKey}/voice`));
     } catch (error) {
       setSubmitting(false);
       if (error instanceof ApiError && Object.keys(error.fields).length > 0) setErrors(error.fields);

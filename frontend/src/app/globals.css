@@ -211,3 +211,58 @@
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * Voice studio: the questionnaire as a conversation with the orb. A night room in the brand's
+ * accent: the brand keeps its display face and accent colour, everything else goes dark.
+ */
+[data-area='voice'] {
+  --c-bg: #08050f;
+  --c-surface: rgb(255 255 255 / 0.06);
+  --c-ink: #f7f3ff;
+  --c-muted: rgb(247 243 255 / 0.6);
+  --c-line: rgb(255 255 255 / 0.16);
+  --c-field: rgb(255 255 255 / 0.08);
+  --r-control: 999px;
+  --r-card: 18px;
+  --focus: #ffffff;
+  color-scheme: dark;
+}
+
+/* Words of the assistant's line arrive one after another, like speech. */
+@keyframes voice-word {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(0.25em);
+  }
+}
+[data-area='voice'] .voice-word {
+  display: inline-block;
+  animation: voice-word 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes voice-fact {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+[data-area='voice'] .voice-fact {
+  animation: voice-fact 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes voice-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+}
+[data-area='voice'] .voice-rise {
+  animation: voice-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-area='voice'] .voice-word,
+  [data-area='voice'] .voice-fact,
+  [data-area='voice'] .voice-rise {
+    animation: none;
+  }
+}
