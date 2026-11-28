@@ -91,25 +91,30 @@ export class DrizzleBackOfficeQueries implements BackOfficeQueries {
     };
   }
 
-  async stats(): Promise<AdminStats> {
+  async stats(productId?: ProductId): Promise<AdminStats> {
     const paidStatuses = sql.join(PROJECT_STATUSES_PAID.map((s) => sql`${s}`), sql`, `);
     const activeStatuses = sql.join(
       PROJECT_STATUSES_ACTIVE.filter((s) => s !== 'printing' && s !== 'shipped').map((s) => sql`${s}`),
       sql`, `,
     );
+    const inWork = sql.join(PROJECT_STATUSES_ACTIVE.map((s) => sql`${s}`), sql`, `);
     const isPaid = sql`${projects.status} in (${paidStatuses})`;
     const thisMonth = sql`${projects.createdAt} >= date_trunc('month', now())`;
     const previousMonth = sql`${projects.createdAt} >= date_trunc('month', now()) - interval '1 month' and ${projects.createdAt} < date_trunc('month', now())`;
     const recent = sql`${projects.createdAt} >= now() - interval '90 days'`;
+    // Everything but `byProduct` is limited to the product when one is given.
+    const scope = productId ? eq(projects.productId, productId) : undefined;
+    const day = sql`(${projects.createdAt} at time zone 'Asia/Almaty')::date`;
 
-    const [byStatusRows, byProductRows, [totals]] = await Promise.all([
-      this.db.select({ status: projects.status, value: count() }).from(projects).groupBy(projects.status),
+    const [byStatusRows, byProductRows, [totals], dailyRows] = await Promise.all([
+      this.db.select({ status: projects.status, value: count() }).from(projects).where(scope).groupBy(projects.status),
       this.db
         .select({
           productId: projects.productId,
           orders: count(),
           paidOrders: sql<number>`count(*) filter (where ${isPaid})::int`,
           revenue: sql<number>`coalesce(sum(${projects.paidAmount}), 0)::int`,
+          active: sql<number>`count(*) filter (where ${projects.status} in (${inWork}))::int`,
         })
         .from(projects)
         .where(sql`${projects.status} <> 'cancelled'`)
@@ -123,6 +128,7 @@ export class DrizzleBackOfficeQueries implements BackOfficeQueries {
           toPrint: sql<number>`count(*) filter (where ${projects.status} = 'paid')::int`,
           toShip: sql<number>`count(*) filter (where ${projects.status} = 'printing')::int`,
           deadlineSoon: sql<number>`count(*) filter (where ${projects.deadline} <= current_date + 14 and ${projects.status} in (${activeStatuses}))::int`,
+          active: sql<number>`count(*) filter (where ${projects.status} in (${inWork}))::int`,
           monthOrders: sql<number>`count(*) filter (where ${thisMonth})::int`,
           monthRevenue: sql<number>`coalesce(sum(${projects.paidAmount}) filter (where ${thisMonth}), 0)::int`,
           prevOrders: sql<number>`count(*) filter (where ${previousMonth})::int`,
@@ -132,7 +138,17 @@ export class DrizzleBackOfficeQueries implements BackOfficeQueries {
           funnelDeposit: sql<number>`count(*) filter (where ${recent} and ${projects.paidAmount} > 0)::int`,
           funnelPaid: sql<number>`count(*) filter (where ${recent} and ${isPaid})::int`,
         })
-        .from(projects),
+        .from(projects)
+        .where(scope),
+      this.db
+        .select({
+          date: sql<string>`${day}::text`.as('date'),
+          orders: sql<number>`count(*)::int`.as('orders'),
+          revenue: sql<number>`coalesce(sum(${projects.paidAmount}), 0)::int`.as('revenue'),
+        })
+        .from(projects)
+        .where(and(scope, sql`${projects.createdAt} >= now() - interval '31 days'`))
+        .groupBy(day),
     ]);
 
     const t = totals!;
@@ -147,16 +163,22 @@ export class DrizzleBackOfficeQueries implements BackOfficeQueries {
       },
       // Every status is present, with zero when there are no orders in it.
       byStatus: Object.fromEntries(ProjectStatus.options.map((status) => [status, byStatusRows.find((r) => r.status === status)?.value ?? 0])) as AdminStats['byStatus'],
-      byProduct: byProductRows.map((r) => ({ productId: r.productId as ProductId, orders: r.orders, paidOrders: r.paidOrders, revenue: r.revenue })),
+      byProduct: byProductRows.map((r) => ({ productId: r.productId as ProductId, orders: r.orders, paidOrders: r.paidOrders, revenue: r.revenue, active: r.active })),
       month: { orders: t.monthOrders, revenue: t.monthRevenue },
       previousMonth: { orders: t.prevOrders, revenue: t.prevRevenue },
       averageCheck: t.averageCheck,
       funnel: { created: t.funnelCreated, deposit: t.funnelDeposit, paid: t.funnelPaid },
+      active: t.active,
+      daily: lastDays(30).map((date) => {
+        const row = dailyRows.find((r) => r.date === date);
+        return { date, orders: row?.orders ?? 0, revenue: row?.revenue ?? 0 };
+      }),
     };
   }
 
-  async customers(query: { q?: string; limit: number; offset: number }): Promise<CustomerPage> {
+  async customers(query: { q?: string; productId?: ProductId; limit: number; offset: number }): Promise<CustomerPage> {
     const conditions: SQL[] = [];
+    if (query.productId) conditions.push(eq(projects.productId, query.productId));
     if (query.q) {
       const like = `%${query.q.replace(/[%_\\]/g, '\\$&')}%`;
       const digits = query.q.replace(/\D/g, '');
@@ -213,4 +235,11 @@ export class DrizzleBackOfficeQueries implements BackOfficeQueries {
   async addNote(projectId: string, note: { text: string; author: string | null }): Promise<void> {
     await this.db.insert(projectNotes).values({ projectId, ...note });
   }
+}
+
+/** The last `count` calendar days in Almaty, oldest first, as ISO dates. */
+function lastDays(count: number): string[] {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty' }).format(new Date());
+  const end = Date.parse(`${today}T00:00:00Z`);
+  return Array.from({ length: count }, (_, i) => new Date(end - (count - 1 - i) * 86_400_000).toISOString().slice(0, 10));
 }

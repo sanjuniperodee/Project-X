@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { formatTenge, type AdminProjectView, type PaymentView, type Product } from '@px/contracts';
-import { getBrand } from '@/brands';
 import { formatDateTime, formatPhone, whatsappLink } from '../lib/format';
 import { STATUS_LABEL } from '../lib/status';
 import { ActionLink } from '../ui/button-link';
@@ -8,7 +7,9 @@ import { CopyButton } from '../ui/copy-button';
 import { Deadline } from '../ui/deadline';
 import { PageHeader } from '../ui/page-header';
 import { Facts, Panel } from '../ui/panel';
+import { ProjectLabel, ProjectMark } from '../scope/project-mark';
 import { StatusBadge } from '../ui/status-badge';
+import { Pipeline } from './pipeline';
 import { Contributions, Materials } from './materials';
 import { Layouts } from './layouts';
 import { Notes } from './notes';
@@ -20,19 +21,19 @@ import { StatusControl } from './status-control';
  * Right: decisions and facts (status, customer, money, notes, history).
  */
 export function OrderView({ project, product, payments }: { project: AdminProjectView; product: Product; payments: PaymentView[] | null }) {
-  const brand = getBrand(project.productId);
   const due = project.quote.total - project.paidAmount;
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         back={{ href: '/admin/orders', label: 'Заказы' }}
+        mark={<ProjectMark id={project.productId} size={36} />}
         title={project.subject}
         description={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <StatusBadge status={project.status} className="text-ink" />
-            <span>{brand.name}</span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <StatusBadge status={project.status} />
+            <ProjectLabel id={project.productId} className="text-ink" />
             <span>создан {formatDateTime(project.createdAt)}</span>
-            <span className="font-mono text-[12px]">#{project.id.slice(0, 8)}</span>
+            <span className="text-[12px]">№ {project.id.slice(0, 8)}</span>
           </span>
         }
         actions={
@@ -48,7 +49,9 @@ export function OrderView({ project, product, payments }: { project: AdminProjec
         }
       />
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+      <Pipeline status={project.status} history={project.history} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Layouts project={project} />
           <Materials project={project} product={product} />

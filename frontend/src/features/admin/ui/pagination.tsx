@@ -6,18 +6,18 @@ export function Pagination({ offset, limit, total, href }: { offset: number; lim
   const from = total === 0 ? 0 : offset + 1;
   const to = Math.min(offset + limit, total);
   return (
-    <nav aria-label="Страницы" className="flex items-center justify-between gap-4 px-3 py-2.5 text-[13px] text-muted">
+    <nav aria-label="Страницы" className="flex items-center justify-between gap-4 px-5 py-3 text-[13px] text-muted">
       <span>
         {from}–{to} из {total}
       </span>
       <span className="flex gap-1">
         {offset > 0 ? (
-          <Link href={href(Math.max(0, offset - limit))} className="rounded-control border border-line bg-surface px-2.5 py-1 text-ink hover:bg-bg">
+          <Link href={href(Math.max(0, offset - limit))} className="rounded-control border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:border-zinc-300">
             Назад
           </Link>
         ) : null}
         {to < total ? (
-          <Link href={href(offset + limit)} className="rounded-control border border-line bg-surface px-2.5 py-1 text-ink hover:bg-bg">
+          <Link href={href(offset + limit)} className="rounded-control border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:border-zinc-300">
             Дальше
           </Link>
         ) : null}

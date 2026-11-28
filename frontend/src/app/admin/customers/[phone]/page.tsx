@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatTenge } from '@px/contracts';
 import { formatDateTime, formatPhone, whatsappLink } from '@/features/admin/lib/format';
+import { Avatar } from '@/features/admin/customers/customers-table';
 import { OrdersTable } from '@/features/admin/orders/orders-table';
 import { ActionLink } from '@/features/admin/ui/button-link';
 import { PageHeader } from '@/features/admin/ui/page-header';
@@ -26,6 +27,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ phone
     <div className="flex flex-col gap-5">
       <PageHeader
         back={{ href: '/admin/customers', label: 'Клиенты' }}
+        mark={<Avatar name={latest.customerName} size={40} />}
         title={latest.customerName}
         description={formatPhone(phone)}
         actions={

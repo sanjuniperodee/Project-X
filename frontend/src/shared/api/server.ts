@@ -58,8 +58,10 @@ export const api = {
   admin: {
     projects: (query: Partial<AdminProjectQuery>) =>
       call(`/admin/projects?${toSearch({ ...query, status: query.status?.join(',') })}`, AdminProjectPage, { headers: adminHeaders() }),
-    stats: () => call('/admin/stats', AdminStats, { headers: adminHeaders() }),
-    customers: (query: { q?: string; limit?: number; offset?: number }) => call(`/admin/customers?${toSearch(query)}`, CustomerPage, { headers: adminHeaders() }),
+    /** The whole studio, or one product. */
+    stats: (productId?: ProductId) => call(`/admin/stats?${toSearch({ productId })}`, AdminStats, { headers: adminHeaders() }),
+    customers: (query: { q?: string; productId?: ProductId; limit?: number; offset?: number }) =>
+      call(`/admin/customers?${toSearch(query)}`, CustomerPage, { headers: adminHeaders() }),
     payments: (projectId: string) =>
       call(`/admin/payments?${toSearch({ projectId })}`, PaymentList, { headers: adminHeaders() }).then((r) => r.items),
     addNote: (id: string, body: AddNoteRequest) =>

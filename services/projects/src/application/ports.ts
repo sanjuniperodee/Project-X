@@ -60,8 +60,9 @@ export interface ProjectRepository {
 /** Read models of the studio back office (lists, dashboard, customers, notes). */
 export interface BackOfficeQueries {
   projects(query: AdminProjectQuery): Promise<AdminProjectPage>;
-  stats(): Promise<AdminStats>;
-  customers(query: { q?: string; limit: number; offset: number }): Promise<CustomerPage>;
+  /** The whole studio, or one product. `byProduct` always covers every product. */
+  stats(productId?: ProductId): Promise<AdminStats>;
+  customers(query: { q?: string; productId?: ProductId; limit: number; offset: number }): Promise<CustomerPage>;
   notes(projectId: string): Promise<ProjectNote[]>;
   addNote(projectId: string, note: { text: string; author: string | null }): Promise<void>;
 }

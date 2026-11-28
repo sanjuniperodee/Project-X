@@ -246,12 +246,26 @@ describe('studio back office', () => {
   it('counts the dashboard numbers', async () => {
     const stats = AdminStats.parse((await http('GET', '/admin/stats')).json());
     expect(stats.byStatus).toMatchObject({ paid: 1, draft: 2, cancelled: 0 });
-    expect(stats.byProduct).toEqual([{ productId: 'glossy', orders: 3, paidOrders: 1, revenue: 35_000 }]);
+    expect(stats.byProduct).toEqual([{ productId: 'glossy', orders: 3, paidOrders: 1, revenue: 35_000, active: 3 }]);
     expect(stats.attention.toPrint).toBe(1);
     expect(stats.attention.deadlineSoon).toBeGreaterThanOrEqual(0);
     expect(stats.month.orders).toBe(3);
     expect(stats.averageCheck).toBe(35_000);
     expect(stats.funnel).toEqual({ created: 3, deposit: 1, paid: 1 });
+    expect(stats.active).toBe(3);
+    // 30 calendar days, oldest first, today last with today's orders.
+    expect(stats.daily).toHaveLength(30);
+    expect(stats.daily.at(-1)).toEqual({ date: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty' }).format(new Date()), orders: 3, revenue: 35_000 });
+    expect(stats.daily.slice(0, -1).every((d) => d.orders === 0)).toBe(true);
+
+    // One product: its numbers only; the per-product table still lists every product.
+    const glossy = AdminStats.parse((await http('GET', '/admin/stats?productId=glossy')).json());
+    expect(glossy.month.orders).toBe(3);
+    const other = AdminStats.parse((await http('GET', '/admin/stats?productId=boardgame')).json());
+    expect(other).toMatchObject({ active: 0, month: { orders: 0, revenue: 0 }, attention: { toPrint: 0 } });
+    expect(other.daily.every((d) => d.orders === 0)).toBe(true);
+    expect(other.byProduct).toEqual(stats.byProduct);
+    expect((await http('GET', '/admin/stats?productId=nope')).statusCode).toBe(422);
   });
 
   it('groups customers by phone', async () => {
@@ -260,6 +274,8 @@ describe('studio back office', () => {
     const madina = customers.items.find((c: { name: string }) => c.name === 'Мадина');
     expect(madina).toMatchObject({ phone: '+77770001122', orders: 2, activeOrders: 2, revenue: 0, productIds: ['glossy'] });
     expect((await http('GET', '/admin/customers?q=динар')).json().items[0].name).toBe('Динара');
+    expect((await http('GET', '/admin/customers?productId=glossy')).json().total).toBe(2);
+    expect((await http('GET', '/admin/customers?productId=shezhire')).json().total).toBe(0);
   });
 
   it('keeps internal notes on a project', async () => {

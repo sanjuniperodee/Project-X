@@ -39,5 +39,16 @@ export const TONE_DOT: Record<StatusTone, string> = {
   stopped: 'bg-red-600',
 };
 
+export const TONE_PILL: Record<StatusTone, string> = {
+  neutral: 'bg-zinc-100 text-zinc-700',
+  progress: 'bg-amber-50 text-amber-900',
+  waiting: 'bg-blue-50 text-blue-800',
+  done: 'bg-emerald-50 text-emerald-800',
+  stopped: 'bg-red-50 text-red-700',
+};
+
+/** The order's road, for the stepper of the order page. */
+export const PIPELINE: ProjectStatus[] = ['draft', 'deposit_paid', 'in_design', 'awaiting_approval', 'paid', 'printing', 'shipped', 'delivered'];
+
 /** Columns of the board, in the order work flows. */
 export const BOARD_STATUSES: ProjectStatus[] = ['draft', 'deposit_paid', 'in_design', 'awaiting_approval', 'paid', 'printing', 'shipped'];

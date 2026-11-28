@@ -323,11 +323,11 @@ export class ProjectService {
     return this.deps.queries.projects(query);
   }
 
-  stats(): Promise<AdminStats> {
-    return this.deps.queries.stats();
+  stats(productId?: ProductId): Promise<AdminStats> {
+    return this.deps.queries.stats(productId);
   }
 
-  customers(query: { q?: string; limit: number; offset: number }): Promise<CustomerPage> {
+  customers(query: { q?: string; productId?: ProductId; limit: number; offset: number }): Promise<CustomerPage> {
     return this.deps.queries.customers(query);
   }
 

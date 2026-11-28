@@ -192,7 +192,7 @@
  * Re-maps the shared tokens so buttons and fields from shared/ui fit in.
  */
 [data-area='admin'] {
-  --c-bg: #f5f5f6;
+  --c-bg: #f4f4f5;
   --c-surface: #ffffff;
   --c-ink: #18181b;
   --c-muted: #71717a;
@@ -204,12 +204,13 @@
   --c-success: #15803d;
   --f-display: var(--font-onest);
   --f-body: var(--font-onest);
-  --r-control: 6px;
-  --r-card: 8px;
+  --r-control: 8px;
+  --r-card: 12px;
   --btn-shadow: none;
   --btn-border: transparent;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
 /*

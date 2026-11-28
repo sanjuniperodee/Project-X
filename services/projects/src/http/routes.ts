@@ -1,6 +1,7 @@
 import {
   AddNoteRequest,
   AdminProjectQuery,
+  AdminStatsQuery,
   CustomerQuery,
   ApproveLayoutRequest,
   ChangeStatusRequest,
@@ -93,7 +94,7 @@ export function registerAdminRoutes(app: FastifyInstance, projects: ProjectServi
     return projects.projects(parseInput(AdminProjectQuery, request.query));
   });
 
-  app.get('/admin/stats', async () => projects.stats());
+  app.get('/admin/stats', async (request) => projects.stats(parseInput(AdminStatsQuery, request.query).productId));
 
   app.get('/admin/customers', async (request) => projects.customers(parseInput(CustomerQuery, request.query)));
 

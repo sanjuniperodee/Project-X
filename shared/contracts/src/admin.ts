@@ -56,11 +56,19 @@ export const AttentionCounts = z.object({
 });
 export type AttentionCounts = z.infer<typeof AttentionCounts>;
 
+/** Dashboard numbers of one product, or of the whole studio without `productId`. */
+export const AdminStatsQuery = z.object({ productId: ProductId.optional() });
+export type AdminStatsQuery = z.infer<typeof AdminStatsQuery>;
+
+/** One day of the last 30 (Asia/Almaty): orders created that day and what they paid so far. */
+export const StatsDay = z.object({ date: z.iso.date(), orders: z.number().int().nonnegative(), revenue: Tenge });
+export type StatsDay = z.infer<typeof StatsDay>;
+
 export const AdminStats = z.object({
   attention: AttentionCounts,
   byStatus: z.record(ProjectStatus, z.number().int().nonnegative()),
   byProduct: z.array(
-    z.object({ productId: ProductId, orders: z.number().int(), paidOrders: z.number().int(), revenue: Tenge }),
+    z.object({ productId: ProductId, orders: z.number().int(), paidOrders: z.number().int(), revenue: Tenge, active: z.number().int().nonnegative() }),
   ),
   /** Calendar month to date and the previous one, by order creation. */
   month: z.object({ orders: z.number().int(), revenue: Tenge }),
@@ -69,6 +77,10 @@ export const AdminStats = z.object({
   averageCheck: Tenge,
   /** Orders created in the last 90 days: how many paid the deposit, how many paid in full. */
   funnel: z.object({ created: z.number().int(), deposit: z.number().int(), paid: z.number().int() }),
+  /** Orders in work (not delivered, not cancelled). */
+  active: z.number().int().nonnegative(),
+  /** The last 30 days, oldest first, every day present. */
+  daily: z.array(StatsDay),
 });
 export type AdminStats = z.infer<typeof AdminStats>;
 
@@ -88,6 +100,8 @@ export type CustomerSummary = z.infer<typeof CustomerSummary>;
 
 export const CustomerQuery = z.object({
   q: z.string().trim().max(80).optional(),
+  /** Customers of one product; their numbers then count only that product's orders. */
+  productId: ProductId.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });

@@ -3,6 +3,7 @@ import { CatalogPhotos } from '@/features/admin/catalog/photos';
 import { SyncButton } from '@/features/admin/catalog/sync-button';
 import { PageHeader } from '@/features/admin/ui/page-header';
 import { Panel } from '@/features/admin/ui/panel';
+import { getScope } from '@/features/admin/scope/scope';
 import { api } from '@/shared/api/server';
 import { Notice } from '@/shared/ui/notice';
 
@@ -18,7 +19,10 @@ const REVIEW = {
 } as const;
 
 export default async function CatalogPage() {
-  const status = await api.admin.catalog.status();
+  const [status, scope] = await Promise.all([api.admin.catalog.status(), getScope()]);
+  // In one project's mode only its products; the sync still covers the whole catalogue.
+  const products = scope ? status.products.filter((p) => p.productId === scope) : status.products;
+  const items = scope ? status.items.filter((i) => i.productId === scope) : status.items;
   return (
     <div className="flex max-w-4xl flex-col gap-5">
       <PageHeader
@@ -28,7 +32,7 @@ export default async function CatalogPage() {
       {status.problem && <Notice tone="danger">{status.problem}</Notice>}
       <Panel title="Фото продуктов" aside="Общие для всех форматов продукта; без фото WhatsApp товар не примет">
         <div className="flex flex-col gap-6">
-          {status.products.map((p) => (
+          {products.map((p) => (
             <div key={p.productId} className="flex flex-col gap-2">
               <div className="font-medium">
                 {p.productName} {p.pending && <span className="text-xs text-muted">· новые фото уйдут при синхронизации</span>}
@@ -43,7 +47,7 @@ export default async function CatalogPage() {
         aside={status.catalogUrl ? <a href={status.catalogUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">Открыть каталог</a> : undefined}
       >
         <ul className="mb-4 divide-y divide-line">
-          {status.items.map((i) => (
+          {items.map((i) => (
             <li key={`${i.productId}:${i.formatId}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span>
                 {i.name} <span className="text-muted">· {formatTenge(i.price)}</span>

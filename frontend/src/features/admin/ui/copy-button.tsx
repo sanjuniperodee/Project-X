@@ -13,7 +13,7 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="h-8 rounded-control border border-line bg-surface px-3 text-[13px] hover:bg-bg"
+      className="h-9 rounded-control border border-line bg-surface px-3.5 text-[13px] font-medium transition-colors hover:border-zinc-300 hover:bg-zinc-50"
     >
       {copied ? 'Скопировано' : label}
     </button>

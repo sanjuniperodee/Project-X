@@ -59,11 +59,20 @@ src/
 
 | Route                       | What the team does there                                                    |
 | --------------------------- | --------------------------------------------------------------------------- |
-| `/admin`                    | queues that need action today, month revenue, funnel, upcoming event dates  |
-| `/admin/orders`             | table or board by status; filters by status, product, design mode, search   |
-| `/admin/orders/[id]`        | answers, materials, layouts, payments, status change, team notes, history   |
+| `/admin`                    | queues that need action, month revenue, 30-day chart, funnel, event dates   |
+| `/admin/orders`             | table (status tabs) or board; filters by status, product, design, search    |
+| `/admin/orders/[id]`        | pipeline, answers, materials, layouts, payments, status, notes, history     |
 | `/admin/customers`          | customers grouped by phone: orders, revenue, last activity                  |
 | `/admin/chats`, `/settings` | sales chats (human handoff) and the Kaspi Pay cashier                       |
+
+**Projects and the general mode.** The switcher at the top of the sidebar picks one project
+(Cover Me, Шежіре, MyGame) or «Все проекты». The choice is the `px_admin_scope` cookie
+(`features/admin/scope/`), so every section follows it: the dashboard, orders, board, customers and
+catalog show only that project, and the stats are asked for with `?productId=`. In the general mode
+the dashboard adds a card per project and stacks the chart by project, and every order row carries
+its project colour. **⌘K / Ctrl+K** opens search over orders, customers, projects and sections.
+«Ждут действия студии» is one number everywhere (`lib/attention.ts`): approval waits on the client
+and is not part of it.
 
 Filters live in the URL (`?status=paid,printing&sort=deadline`), so every queue on the dashboard is
 a plain link and any view can be bookmarked. Code lives in `features/admin/`: `lib/` (status labels,
