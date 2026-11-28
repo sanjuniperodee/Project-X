@@ -9,12 +9,17 @@ import { CatalogClient } from './infrastructure/catalog-client';
 const service = createService({ name: 'ai', logLevel: config.LOG_LEVEL, prettyLogs: config.NODE_ENV === 'development' });
 const log = service.app.log;
 
+const bus = await NatsEventBus.connect({ url: config.NATS_URL, name: 'ai', log });
+
 const generator: DraftGenerator =
   config.AI_GENERATOR === 'claude'
-    ? new ClaudeDraftGenerator({ apiKey: config.ANTHROPIC_API_KEY!, model: config.AI_MODEL })
+    ? new ClaudeDraftGenerator({
+        apiKey: config.ANTHROPIC_API_KEY!,
+        model: config.AI_MODEL,
+        // Token spend goes to the sales service, which keeps the studio's AI spend summary.
+        onUsage: (usage) => void bus.publish('ai.llm_used', usage).catch((error: Error) => log.warn({ err: error }, 'usage not reported')),
+      })
     : new TemplateDraftGenerator();
-
-const bus = await NatsEventBus.connect({ url: config.NATS_URL, name: 'ai', log });
 service.addReadinessCheck({ name: 'nats', check: () => bus.ping() });
 service.onShutdown(() => bus.close());
 

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { DraftContent, MAGAZINE_RUBRICS, textToneOf } from '@px/contracts';
+import { DraftContent, MAGAZINE_RUBRICS, textToneOf, type EventPayload } from '@px/contracts';
 import { describeProject } from '../prompts/describe';
 import { PRODUCT_INSTRUCTIONS, revisionBrief, SYSTEM_PROMPT, toneBrief } from '../prompts/instructions';
 import type { DraftGenerator, DraftRequest } from './generator';
@@ -57,9 +57,12 @@ export class ClaudeDraftGenerator implements DraftGenerator {
   private readonly client: Anthropic;
   private readonly model: string;
 
-  constructor(options: { apiKey: string; model: string }) {
+  private readonly onUsage?: (usage: EventPayload<'ai.llm_used'>) => void;
+
+  constructor(options: { apiKey: string; model: string; onUsage?: (usage: EventPayload<'ai.llm_used'>) => void }) {
     this.client = new Anthropic({ apiKey: options.apiKey, maxRetries: 3 });
     this.model = options.model;
+    this.onUsage = options.onUsage;
     this.id = `claude:${options.model}`;
   }
 
@@ -84,6 +87,17 @@ export class ClaudeDraftGenerator implements DraftGenerator {
       ],
     });
 
+    // The studio's AI spend (/admin/usage): every billed call, refused or not.
+    this.onUsage?.({
+      service: 'ai',
+      purpose: request.revision ? 'revision' : 'draft',
+      model: response.model,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
+      projectId: request.project.projectId,
+    });
     if (response.stop_reason === 'refusal') {
       throw new Error(`Model declined to generate the draft (${response.stop_details?.category ?? 'no category'})`);
     }

@@ -74,6 +74,9 @@ function LeafInput({ field, value, onChange, errors, idPrefix }: FieldInputProps
         onChange(field.multiple ? (selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]) : v);
       return (
         <FieldShell {...shell} as="fieldset">
+          {field.multiple && field.ordered && (
+            <p className="mb-3 text-sm text-muted">Отмечайте по порядку: номер рядом — место рубрики в номере. Снимите отметку, чтобы поменять порядок.</p>
+          )}
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3" {...aria}>
             {field.options.map((o) => {
               const checked = selected.includes(o.value);
@@ -93,10 +96,19 @@ function LeafInput({ field, value, onChange, errors, idPrefix }: FieldInputProps
                     onChange={() => toggle(o.value)}
                     className="mt-1 size-4 shrink-0 accent-[var(--c-ink)]"
                   />
-                  <span>
+                  <span className="min-w-0 flex-1">
                     <span className="block font-medium">{o.label}</span>
                     {o.description && <span className="mt-0.5 block text-sm leading-relaxed text-muted">{o.description}</span>}
                   </span>
+                  {/* Ordered choices: the pick order is the order in the issue, so show it. */}
+                  {field.multiple && field.ordered && checked && (
+                    <span
+                      aria-label={`${selected.indexOf(o.value) + 1}-я по порядку`}
+                      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-semibold text-bg tabular-nums"
+                    >
+                      {selected.indexOf(o.value) + 1}
+                    </span>
+                  )}
                 </label>
               );
             })}
