@@ -1,15 +1,63 @@
 'use client';
 
 import { useState } from 'react';
-import type { LayoutPage } from '@px/contracts';
+import dynamic from 'next/dynamic';
+import type { LayoutPage, ProductId } from '@px/contracts';
+import { useBrandId } from '@/shared/lib/brand-context';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/button';
 
+const loadMockup = () => import('./mockup-3d');
+// The 3D model is its own chunk, fetched only when the customer opens the tab (or points at it).
+const Mockup3D = dynamic(() => loadMockup().then((m) => m.Mockup3D), {
+  ssr: false,
+  loading: () => <div aria-hidden className="aspect-square w-full animate-pulse rounded-card bg-ink/5 sm:aspect-[5/4]" />,
+});
+
+type Mode = 'pages' | '3d';
+
 /**
- * Page previews of a layout. Books and magazines are shown as spreads (cover alone, then pairs),
- * card sheets and boards one by one. Previews are self-contained SVGs, so a plain <img> shows them.
+ * Page previews of a layout, flat or as the printed product in 3D. `productId` defaults to the brand of the page.
  */
-export function LayoutPages({ pages, spreads }: { pages: LayoutPage[]; spreads: boolean }) {
+export function LayoutPages({ pages, spreads, productId }: { pages: LayoutPage[]; spreads: boolean; productId?: ProductId }) {
+  const brand = useBrandId();
+  const product = productId ?? brand ?? (spreads ? 'glossy' : 'boardgame');
+  const [mode, setMode] = useState<Mode>('pages');
+  const tabs: Array<{ id: Mode; label: string }> = [
+    { id: 'pages', label: spreads ? 'Развороты' : 'Страницы' },
+    { id: '3d', label: '3D' },
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      <div role="tablist" aria-label="Как показать макет" className="inline-flex self-start rounded-control border-2 border-ink/15 p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={mode === tab.id}
+            onClick={() => setMode(tab.id)}
+            onPointerEnter={tab.id === '3d' ? () => void loadMockup() : undefined}
+            onFocus={tab.id === '3d' ? () => void loadMockup() : undefined}
+            className={cn(
+              'min-h-10 rounded-control px-4 text-[15px] font-medium transition-colors',
+              mode === tab.id ? 'bg-ink text-bg' : 'text-muted hover:text-ink',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel">{mode === '3d' ? <Mockup3D pages={pages} productId={product} /> : <FlatPages pages={pages} spreads={spreads} />}</div>
+    </div>
+  );
+}
+
+/**
+ * Books and magazines are shown as spreads (cover alone, then pairs), card sheets and boards one by one.
+ * Previews are self-contained SVGs, so a plain <img> shows them.
+ */
+function FlatPages({ pages, spreads }: { pages: LayoutPage[]; spreads: boolean }) {
   const groups = spreads ? toSpreads(pages) : pages.map((p) => [p]);
   const [index, setIndex] = useState(0);
   const current = groups[Math.min(index, groups.length - 1)] ?? [];

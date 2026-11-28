@@ -22,3 +22,8 @@ export function useBrand(): BrandContextValue {
   if (!value) throw new Error('useBrand must be used inside <BrandProvider>');
   return value;
 }
+
+/** The brand of the page, or null outside a brand (e.g. in the studio back-office). */
+export function useBrandId(): ProductId | null {
+  return useContext(BrandContext)?.brand ?? null;
+}
