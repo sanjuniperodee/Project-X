@@ -22,6 +22,7 @@ function project(patch: Partial<ProjectView> = {}): ProjectView {
     draft: null,
     layout: null,
     design: { mode: 'auto', revisionsUsed: 0, revisionsLimit: 3 },
+    canReopen: false,
     inviteKey: 'invite-key-000000',
     paidAmount: 10_000,
     history: [],
