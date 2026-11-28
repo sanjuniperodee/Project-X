@@ -1,11 +1,12 @@
-import { SellerTrialRequest, SetConversationModeRequest, StudioReplyRequest, z } from '@px/contracts';
+import { CatalogPhotosRequest, ProductId, SellerTrialRequest, SetConversationModeRequest, StudioReplyRequest, z } from '@px/contracts';
 import { AppError, parseInput, type FastifyInstance } from '@px/service-kit';
+import type { CatalogService } from '../application/catalog-service';
 import type { SalesService } from '../application/sales-service';
 import { parseGowaWebhook, verifyGowaSignature } from '../infrastructure/gowa';
 
 const IdParams = z.object({ id: z.uuid() });
 
-export function registerRoutes(app: FastifyInstance, sales: SalesService, options: { webhookSecret: string }) {
+export function registerRoutes(app: FastifyInstance, sales: SalesService, catalog: CatalogService, options: { webhookSecret: string }) {
   // Studio back office (the gateway requires the admin token for /api/admin/*).
   app.get('/admin/whatsapp', async () => sales.whatsappStatus());
   app.post('/admin/whatsapp/qr', async () => sales.whatsappQr());
@@ -18,6 +19,14 @@ export function registerRoutes(app: FastifyInstance, sales: SalesService, option
   app.post('/admin/conversations/:id/mode', async (request) =>
     sales.setMode(parseInput(IdParams, request.params).id, parseInput(SetConversationModeRequest, request.body).mode),
   );
+
+  // WhatsApp Business catalog: photos per product and the sync of our formats into WhatsApp.
+  app.get('/admin/catalog', async () => catalog.status());
+  app.put('/admin/catalog/photos/:productId', async (request) => {
+    const { productId } = parseInput(z.object({ productId: ProductId }), request.params);
+    return catalog.setPhotos(productId, parseInput(CatalogPhotosRequest, request.body).images);
+  });
+  app.post('/admin/catalog/sync', async () => catalog.sync());
 
   app.post('/admin/sales/trial', async (request) => sales.trial(parseInput(SellerTrialRequest, request.body).messages));
 

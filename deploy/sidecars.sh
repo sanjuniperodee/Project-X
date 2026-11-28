@@ -51,31 +51,43 @@ if has kaspi; then
 fi
 
 if has whatsapp; then
-  echo "→ GOWA v$GOWA_VERSION, port $GOWA_PORT"
+  # The same GOWA build as MyBooks and DoseWear: PR #892 + patches with the WhatsApp Business catalog
+  # (/catalog/*). Put it with its .sha256 into ~/px/sidecars/gowa-beta/ (or pass GOWA_BETA_BIN=<file>);
+  # without it the plain release v$GOWA_VERSION is installed (no catalog).
   G="$DIR/gowa"
   mkdir -p "$G"
-  case "$(uname -m)" in x86_64 | amd64) arch=amd64 ;; aarch64 | arm64) arch=arm64 ;; *) echo "GOWA: no build for $(uname -m)"; exit 1 ;; esac
-  command -v unzip >/dev/null || { echo "unzip is required"; exit 1; }
-  zip="whatsapp_${GOWA_VERSION}_linux_${arch}.zip"
-  base="https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/download/v${GOWA_VERSION}"
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
-  curl -fsSL -o "$tmp/$zip" "$base/$zip"
-  curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt"
-  (cd "$tmp" && grep " $zip\$" checksums.txt | sha256sum -c --quiet -) || { echo "GOWA: checksum mismatch"; exit 1; }
-  mkdir -p "$tmp/x" && unzip -q "$tmp/$zip" -d "$tmp/x"
-  bin="$(find "$tmp/x" -type f -name 'linux-*' | head -n 1)"
-  [ -n "$bin" ] || { echo "GOWA: no binary in the archive"; exit 1; }
+  BETA_BIN="${GOWA_BETA_BIN:-$DIR/gowa-beta/whatsapp}"
+  if [ -f "$BETA_BIN" ]; then
+    echo "→ GOWA beta build with catalog ($BETA_BIN), port $GOWA_PORT"
+    [ -f "$BETA_BIN.sha256" ] || { echo "GOWA: no $(basename "$BETA_BIN").sha256 next to the build"; exit 1; }
+    [ "$(sha256sum "$BETA_BIN" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$BETA_BIN.sha256")" ] || { echo "GOWA: checksum mismatch"; exit 1; }
+    "$BETA_BIN" --help >/dev/null 2>&1 || { echo "GOWA: the build does not run here"; exit 1; }
+    bin="$BETA_BIN"
+  else
+    echo "→ GOWA v$GOWA_VERSION (release, no catalog), port $GOWA_PORT"
+    case "$(uname -m)" in x86_64 | amd64) arch=amd64 ;; aarch64 | arm64) arch=arm64 ;; *) echo "GOWA: no build for $(uname -m)"; exit 1 ;; esac
+    command -v unzip >/dev/null || { echo "unzip is required"; exit 1; }
+    zip="whatsapp_${GOWA_VERSION}_linux_${arch}.zip"
+    base="https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/download/v${GOWA_VERSION}"
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT
+    curl -fsSL -o "$tmp/$zip" "$base/$zip"
+    curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt"
+    (cd "$tmp" && grep " $zip\$" checksums.txt | sha256sum -c --quiet -) || { echo "GOWA: checksum mismatch"; exit 1; }
+    mkdir -p "$tmp/x" && unzip -q "$tmp/$zip" -d "$tmp/x"
+    bin="$(find "$tmp/x" -type f -name 'linux-*' | head -n 1)"
+    [ -n "$bin" ] || { echo "GOWA: no binary in the archive"; exit 1; }
+  fi
   # The number's session lives in storages: copy it before replacing the binary (rollback without a new QR).
   if [ -d "$G/storages" ] && ! cmp -s "$bin" "$G/whatsapp"; then
     pm2 stop px-gowa >/dev/null 2>&1 || true
-    tar -C "$G" -czf "$G/storages-$(date +%Y%m%d-%H%M%S).tgz" storages
+    tar -C "$G" -czf "$G/storages-$(date +%Y%m%d-%H%M%S).tgz" storages || { pm2 start px-gowa >/dev/null 2>&1 || true; echo "GOWA: storages copy failed, gateway left as it was"; exit 1; }
     ls -1t "$G"/storages-*.tgz | tail -n +4 | xargs -r rm -f
   fi
   install -m 755 "$bin" "$G/whatsapp.new" && mv -f "$G/whatsapp.new" "$G/whatsapp"
   touch "$G/.env" && chmod 600 "$G/.env"
   grep -q '^APP_BASIC_AUTH=' "$G/.env" || echo "APP_BASIC_AUTH=px:$(secret 16)" >>"$G/.env"
-  sed -i -E '/^(APP_PORT|APP_HOST|APP_OS|APP_UI_ENABLED|MCP_ENABLED|WHATSAPP_WEBHOOK_IGNORE_JIDS|WHATSAPP_AUTO_DOWNLOAD_MEDIA|WHATSAPP_IGNORE_STATUS_MEDIA|WHATSAPP_ACCOUNT_VALIDATION)=/d' "$G/.env"
+  sed -i -E '/^(APP_PORT|APP_HOST|APP_OS|APP_UI_ENABLED|MCP_ENABLED|WHATSAPP_WEBHOOK_IGNORE_JIDS|WHATSAPP_AUTO_DOWNLOAD_MEDIA|WHATSAPP_IGNORE_STATUS_MEDIA|WHATSAPP_ACCOUNT_VALIDATION|WHATSAPP_BETA_CALL_ENABLED)=/d' "$G/.env"
   cat >>"$G/.env" <<EOT
 APP_PORT=$GOWA_PORT
 APP_HOST=127.0.0.1
@@ -86,6 +98,7 @@ WHATSAPP_WEBHOOK_IGNORE_JIDS=@g.us,@newsletter,@broadcast
 WHATSAPP_AUTO_DOWNLOAD_MEDIA=false
 WHATSAPP_IGNORE_STATUS_MEDIA=true
 WHATSAPP_ACCOUNT_VALIDATION=false
+WHATSAPP_BETA_CALL_ENABLED=false
 EOT
   setenv GOWA_API_URL "http://127.0.0.1:$GOWA_PORT"
   setenv GOWA_BASIC_AUTH "$(grep '^APP_BASIC_AUTH=' "$G/.env" | cut -d= -f2-)"

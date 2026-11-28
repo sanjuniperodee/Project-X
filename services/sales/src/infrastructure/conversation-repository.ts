@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { ConversationRepository } from '../application/ports';
 import type { ChatMessage, Conversation, LinkedProject } from '../domain/conversation';
 import type { Database } from './db/client';
@@ -69,6 +69,40 @@ export class DrizzleConversationRepository implements ConversationRepository {
   async projectLink(projectId: string) {
     const [row] = await this.db.select().from(conversationProjects).where(eq(conversationProjects.projectId, projectId)).limit(1);
     return (row as LinkedProject | undefined) ?? null;
+  }
+
+  async recentOurText(conversationId: string, text: string, since: Date) {
+    const [row] = await this.db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          inArray(messages.author, ['bot', 'system', 'studio']),
+          eq(messages.text, text),
+          gte(messages.createdAt, since),
+        ),
+      )
+      .limit(1);
+    return !!row;
+  }
+
+  async followUpCandidates(before: Date) {
+    const rows = await this.db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.mode, 'bot'),
+          eq(conversations.pending, false),
+          isNotNull(conversations.lastCustomerAt),
+          gt(conversations.lastMessageAt, conversations.lastCustomerAt),
+          lt(conversations.lastMessageAt, before),
+          lt(conversations.followUps, 3),
+        ),
+      )
+      .limit(100);
+    return rows as Conversation[];
   }
 
   async pending() {

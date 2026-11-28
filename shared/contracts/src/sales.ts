@@ -62,3 +62,45 @@ export const SellerTrialRequest = z.object({
     .max(30),
 });
 export const SellerTrialResponse = z.object({ reply: z.string().nullable(), actions: z.array(z.string()) });
+
+/** WhatsApp Business catalog of the studio: one WhatsApp product per product format. */
+export const WaReview = z.enum(['none', 'pending', 'approved', 'rejected', 'outdated', 'unknown']);
+export const CatalogItemStatus = z.object({
+  productId: z.string(),
+  formatId: z.string(),
+  name: z.string(),
+  price: z.number().int(),
+  /** WhatsApp product id; null — not in the catalog yet. */
+  waProductId: z.string().nullable(),
+  review: WaReview,
+  /** Price/name/description differ from our catalog: the next sync edits it. */
+  outdated: z.boolean(),
+});
+export const CatalogProductPhotos = z.object({
+  productId: z.string(),
+  productName: z.string(),
+  images: z.array(z.string()),
+  /** Photos changed since the last sync. */
+  pending: z.boolean(),
+});
+export const CatalogStatus = z.object({
+  /** The gateway has the catalog build and the number is linked. */
+  available: z.boolean(),
+  problem: z.string().nullable(),
+  catalogUrl: z.string().nullable(),
+  lastSyncAt: z.iso.datetime().nullable(),
+  products: z.array(CatalogProductPhotos),
+  items: z.array(CatalogItemStatus),
+});
+export type CatalogStatus = z.infer<typeof CatalogStatus>;
+export const CatalogPhotosRequest = z.object({
+  images: z.array(z.string().regex(/^\/api\/media\/files\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/, 'Фото: JPEG, PNG или WebP из загрузки')).max(10),
+});
+export const CatalogSyncResult = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  removed: z.number().int(),
+  unchanged: z.number().int(),
+  skipped: z.array(z.string()),
+  status: CatalogStatus,
+});

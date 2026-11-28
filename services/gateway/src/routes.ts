@@ -26,6 +26,7 @@ export function routeTable(config: GatewayConfig): Route[] {
     { prefix: '/api/admin/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/admin/payments', admin: true },
     { prefix: '/api/admin/whatsapp', upstream: config.SALES_URL, rewritePrefix: '/admin/whatsapp', admin: true },
     { prefix: '/api/admin/conversations', upstream: config.SALES_URL, rewritePrefix: '/admin/conversations', admin: true },
+    { prefix: '/api/admin/catalog', upstream: config.SALES_URL, rewritePrefix: '/admin/catalog', admin: true },
     { prefix: '/api/admin/sales', upstream: config.SALES_URL, rewritePrefix: '/admin/sales', admin: true },
     { prefix: '/api/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/payments' },
     { prefix: '/api/webhooks/payments', upstream: config.PAYMENTS_URL, rewritePrefix: '/webhooks' },

@@ -5,6 +5,8 @@ import {
   AdminStats,
   CustomerPage,
   PaymentList,
+  CatalogStatus,
+  CatalogSyncResult,
   ConversationList,
   ConversationView,
   SellerTrialResponse,
@@ -78,6 +80,13 @@ export const api = {
         call(`/admin/conversations/${encodeURIComponent(id)}/reply`, ConversationView, { method: 'POST', body: { text }, headers: adminHeaders() }),
       mode: (id: string, mode: 'bot' | 'human') =>
         call(`/admin/conversations/${encodeURIComponent(id)}/mode`, ConversationView, { method: 'POST', body: { mode }, headers: adminHeaders() }),
+    },
+    catalog: {
+      status: () => call('/admin/catalog', CatalogStatus, { headers: adminHeaders() }),
+      setPhotos: (productId: string, images: string[]) =>
+        call(`/admin/catalog/photos/${encodeURIComponent(productId)}`, CatalogStatus, { method: 'PUT', body: { images }, headers: adminHeaders() }),
+      sync: () =>
+        call('/admin/catalog/sync', CatalogSyncResult, { method: 'POST', body: {}, headers: adminHeaders(), signal: AbortSignal.timeout(300_000) }),
     },
     sellerTrial: (messages: { author: 'customer' | 'bot'; text: string }[]) =>
       call('/admin/sales/trial', SellerTrialResponse, { method: 'POST', body: { messages }, headers: adminHeaders(), signal: AbortSignal.timeout(120_000) }),

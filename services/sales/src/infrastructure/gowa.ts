@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AppError } from '@px/service-kit';
 import type { InboundMessage, WhatsAppGateway, WhatsAppGatewayStatus } from '../application/ports';
+import { cardFromGowaPayload, cardText, toWaPrice } from '../domain/catalog';
 import { jidFromChatId } from '../domain/conversation';
 
 /** Device id of the studio number inside the GOWA gateway (one gateway per project on the server). */
@@ -65,6 +66,67 @@ export class GowaWhatsApp implements WhatsAppGateway {
     await this.json('POST', `/devices/${DEVICE}/logout`);
   }
 
+  /** Business profile of the linked number: commerce_experience=catalog once the catalog exists in the app. */
+  async commerceExperience(phone: string): Promise<string | null> {
+    const res = await this.json<{ results?: { profile_options?: { commerce_experience?: string } } }>('GET', `/user/business-profile?phone=${encodeURIComponent(jidFromChatId(phone))}`);
+    return res.results?.profile_options?.commerce_experience ?? null;
+  }
+
+  // ---------- WhatsApp Business catalog (GOWA build with the catalog patch, same as MyBooks / DoseWear) ----------
+
+  /** GraphQL operation of the catalog on graph.facebook.com with the number's token (kept inside the gateway). */
+  async catalogGraphql(docId: string, variables: unknown): Promise<unknown> {
+    const res = await this.json<{ results?: { http_status?: number; body?: unknown } }>('POST', '/catalog/graphql', { doc_id: docId, variables, locale: 'ru_RU' }, 180_000);
+    if (res.results?.body === undefined) throw new AppError('unavailable', `WhatsApp: ответ каталога не разобрать (HTTP ${res.results?.http_status ?? '?'})`);
+    return res.results.body;
+  }
+
+  /** Who edits: business person id (actor_id) and the number's LID (mutations address the business by LID). */
+  async catalogToken(fresh = false) {
+    const res = await this.json<{ results?: { business_person_id?: string; jid?: string; lid?: string } }>('GET', `/catalog/token${fresh ? '?fresh=1' : ''}`, undefined, 120_000);
+    return { businessPersonId: res.results?.business_person_id ?? '', jid: res.results?.jid ?? '', lid: res.results?.lid ?? '' };
+  }
+
+  async uploadProductImages(images: { data: Uint8Array; name: string; mime: string }[]): Promise<string[]> {
+    if (!images.length) return [];
+    const form = new FormData();
+    for (const img of images) form.append('image', new Blob([Buffer.from(img.data)], { type: img.mime || 'image/jpeg' }), img.name || 'photo.jpg');
+    const res = await this.json<{ results?: { urls?: string[] } }>('POST', '/catalog/upload-image', form, 180_000);
+    const urls = res.results?.urls ?? [];
+    if (urls.length !== images.length) throw new AppError('unavailable', 'WhatsApp не принял фото товара');
+    return urls;
+  }
+
+  /** Product card in the chat: photo, price, "Message business", add to cart. */
+  async sendProduct(chatId: string, card: { productId: string; title: string; description: string; price: number; retailerId: string; url: string; imageUrl: string | null; imageCount: number; body: string }) {
+    if (!/^\d{1,40}$/.test(card.productId)) throw AppError.badRequest('Неверный id товара');
+    const product = {
+      product_id: card.productId,
+      title: card.title,
+      description: card.description,
+      currency: 'KZT',
+      price_amount_1000: toWaPrice(card.price),
+      retailer_id: card.retailerId,
+      url: card.url,
+      image_url: card.imageUrl ?? '',
+      image_count: card.imageCount,
+      body: card.body,
+    };
+    const res = await this.json<{ results?: { message_id?: string } }>('POST', '/catalog/send-product', { phone: jidFromChatId(chatId), product }, 120_000);
+    return res.results?.message_id ?? null;
+  }
+
+  /** wa.me/c/<number> with a catalog preview (cover: first product photo). */
+  async sendCatalogLink(chatId: string, text: string, preview: { title: string; description: string; imageUrl: string | null }) {
+    const res = await this.json<{ results?: { message_id?: string } }>(
+      'POST',
+      '/catalog/send-link',
+      { phone: jidFromChatId(chatId), text, title: preview.title, description: preview.description, image_url: preview.imageUrl ?? '' },
+      60_000,
+    );
+    return res.results?.message_id ?? null;
+  }
+
   private headers(): Record<string, string> {
     return {
       'X-Device-Id': DEVICE,
@@ -83,14 +145,15 @@ export class GowaWhatsApp implements WhatsAppGateway {
     return res;
   }
 
-  private async json<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<T> {
+  private async json<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown, timeoutMs = 15_000): Promise<T> {
+    const isForm = body instanceof FormData;
     let res: Response;
     try {
       res = await this.fetch(`${this.options.baseUrl.replace(/\/+$/, '')}${path}`, {
         method,
-        headers: { ...this.headers(), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
+        headers: { ...this.headers(), ...(body === undefined || isForm ? {} : { 'Content-Type': 'application/json' }) },
+        body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
       throw new AppError('unavailable', 'Шлюз WhatsApp недоступен');
@@ -145,7 +208,8 @@ export function parseGowaWebhook(body: unknown): InboundMessage[] {
   const chat = str(p.chat_id);
   const externalId = str(p.id);
   if (!externalId || !PERSONAL.test(chat)) return [];
-  let text = str(p.body).trim();
+  const card = cardFromGowaPayload(p);
+  let text = card ? cardText(card) : str(p.body).trim();
   if (!text) {
     const media = ['image', 'video', 'audio', 'document', 'sticker', 'location', 'contact'].find((k) => k in p);
     if (!media) return [];

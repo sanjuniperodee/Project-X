@@ -38,6 +38,13 @@ export const config = loadConfig({
     .string()
     .default('')
     .transform((v) => v.replace(/\D/g, '') || null),
+  /** Media service on the private network: photos for the WhatsApp catalog. */
+  MEDIA_URL: z.url().default('http://127.0.0.1:4104'),
+  /** WhatsApp catalog document ids override (JSON, e.g. {"add":"…"}) when WhatsApp changes them. */
+  WA_CATALOG_DOCS: z
+    .string()
+    .default('')
+    .transform((v) => (v ? (JSON.parse(v) as Record<string, string>) : {})),
   MIGRATIONS_DIR: z.string().default('./drizzle'),
 });
 
