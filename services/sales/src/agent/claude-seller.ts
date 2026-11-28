@@ -1,17 +1,29 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaTool } from '@anthropic-ai/sdk/helpers/beta/json-schema';
-import { formatTenge, PROJECT_STATUS_LABELS, ProductId, z } from '@px/contracts';
+import { formatTenge, ProductId, z } from '@px/contracts';
 import type { Logger } from '@px/service-kit';
 import { HANDOFF_REASONS, type HandoffReason, type SellerAgent, type SellerReply, type SellerTools } from '../application/ports';
 import type { ChatMessage, Conversation } from '../domain/conversation';
 import { calendar, studioHoursNote } from '../domain/follow-ups';
 import { SELLER_SYSTEM_PROMPT } from './prompt';
 
+export interface SellerUsage {
+  purpose: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  conversationId: string | null;
+}
+
 export interface ClaudeSellerOptions {
   apiKey: string;
   model: string;
   effort: 'low' | 'medium' | 'high';
   log: Logger;
+  /** Every model call (each tool-runner iteration) for the AI spend summary. */
+  onUsage?: (usage: SellerUsage) => void;
   client?: Anthropic;
 }
 
@@ -58,8 +70,7 @@ export class ClaudeSeller implements SellerAgent {
     let correction = '';
     for (let attempt = 0; attempt < 2; attempt++) {
       const messages: BetaMessageParam[] = [...base, { role: 'system', content: correction ? `${context}\n\n${correction}` : context }];
-      const final = await this.client.beta.messages
-        .toolRunner({
+      const runner = this.client.beta.messages.toolRunner({
           model: this.options.model,
           max_tokens: 4096,
           system: SELLER_SYSTEM_PROMPT,
@@ -70,8 +81,22 @@ export class ClaudeSeller implements SellerAgent {
           max_iterations: 8,
           tools: this.tools(tools, state),
           messages,
-        })
-        .runUntilDone();
+        });
+      // Iterate instead of runUntilDone: every iteration is a billed call, and each one goes to the spend summary.
+      let final: Anthropic.Beta.Messages.BetaMessage | undefined;
+      for await (const message of runner) {
+        final = message;
+        this.options.onUsage?.({
+          purpose: input.purpose ?? mode,
+          model: message.model,
+          inputTokens: message.usage.input_tokens,
+          outputTokens: message.usage.output_tokens,
+          cacheReadTokens: message.usage.cache_read_input_tokens ?? 0,
+          cacheWriteTokens: message.usage.cache_creation_input_tokens ?? 0,
+          conversationId: input.purpose === 'trial' ? null : conversation.id,
+        });
+      }
+      if (!final) return { text: null, handedOff: state.handedOff };
 
       if (final.stop_reason === 'refusal') {
         this.options.log.warn({ conversationId: conversation.id, details: final.stop_details }, 'seller refused');
@@ -96,18 +121,14 @@ export class ClaudeSeller implements SellerAgent {
 
   /** Per-turn facts for the model, sent as an operator (system) message after the customer's turn. */
   private async context(c: Conversation, tools: SellerTools, now: Date) {
-    const [orders, cards] = await Promise.all([tools.orders().catch(() => []), tools.catalogCards().catch(() => [])]);
-    const lines = orders.map(({ project: p }) => {
-      const due = p.quote.total - p.paidAmount;
-      return `- projectId=${p.id}: «${p.subject}», продукт ${p.productId}/${p.quote.formatId}, статус «${PROJECT_STATUS_LABELS[p.status]}», итого ${formatTenge(p.quote.total)}, оплачено ${formatTenge(p.paidAmount)}${due > 0 ? `, к оплате ${formatTenge(due)}` : ''}`;
-    });
+    const [briefs, cards] = await Promise.all([tools.orderBriefs().catch(() => []), tools.catalogCards().catch(() => [])]);
     const date = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Asia/Almaty', dateStyle: 'full', timeStyle: 'short' }).format(now);
     return [
       '## Сейчас',
       `Дата и время: ${date} (Алматы). ${studioHoursNote(now)}`,
       `Календарь (день недели к числу бери отсюда, не считай сам): ${calendar(now)}.`,
       `Клиент: ${c.name || 'имя не указано'}; номер WhatsApp ${c.phone ? 'известен — счёт Kaspi уйдёт на него' : 'скрыт — для заказа попроси номер телефона'}.`,
-      lines.length ? `Заказы клиента:\n${lines.join('\n')}` : 'Заказов у клиента пока нет.',
+      briefs.length ? `## Заказы клиента (актуально на эту минуту — клиент может заполнять анкету прямо сейчас)\n${briefs.join('\n\n')}` : 'Заказов у клиента пока нет.',
       cards.length
         ? `Карточки в каталоге WhatsApp (send_product_card): ${cards.map((k) => `${k.productId}/${k.formatId} «${k.name}»`).join('; ')}.`
         : 'Каталога WhatsApp пока нет — описывай форматы словами.',

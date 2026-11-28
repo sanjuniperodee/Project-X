@@ -363,3 +363,18 @@ it('reminds a silent customer once per step, in working hours', async () => {
   // A chat the studio took is never reminded.
   expect(sent.some((m) => m.chatId === '77019998877' && /Получилось/.test(m.text))).toBe(false);
 });
+
+it('sums the AI spend from the ai service events, once per event', async () => {
+  const event = createEnvelope('ai.llm_used', {
+    service: 'ai', purpose: 'draft', model: 'claude-opus-5-5',
+    inputTokens: 10_000, outputTokens: 2_000, cacheReadTokens: 50_000, cacheWriteTokens: 0, projectId: 'p1',
+  });
+  await bus.publishEnvelope(event);
+  await bus.publishEnvelope(event); // redelivery
+  await bus.drain();
+  const summary = (await app.service.app.inject({ method: 'GET', url: '/admin/usage?days=7' })).json();
+  // 10k × $4 + 2k × $20 + 50k × $0.20 per million = $0.09
+  expect(summary.total).toMatchObject({ calls: 1, inputTokens: 10_000, outputTokens: 2_000, cacheReadTokens: 50_000, costUsd: 0.09 });
+  expect(summary.byPurpose[0]).toMatchObject({ key: 'ai/draft', costUsd: 0.09 });
+  expect(summary.byModel[0]).toMatchObject({ key: 'claude-opus-5-5' });
+});

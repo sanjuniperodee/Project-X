@@ -83,3 +83,24 @@ export const waProducts = pgTable('wa_products', {
   imageCount: integer('image_count').notNull().default(0),
   syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Every model call of the studio (this service's and the ai service's events): tokens and estimated cost. */
+export const llmUsage = pgTable(
+  'llm_usage',
+  {
+    id: text('id').primaryKey(),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+    service: text('service').notNull(),
+    purpose: text('purpose').notNull(),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens').notNull(),
+    outputTokens: integer('output_tokens').notNull(),
+    cacheReadTokens: integer('cache_read_tokens').notNull(),
+    cacheWriteTokens: integer('cache_write_tokens').notNull(),
+    /** Micro-dollars: integers sum exactly. */
+    costMicroUsd: integer('cost_micro_usd').notNull(),
+    conversationId: uuid('conversation_id'),
+    projectId: text('project_id'),
+  },
+  (t) => [index('llm_usage_at_idx').on(t.at)],
+);

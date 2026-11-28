@@ -14,6 +14,7 @@ export function AdminShell({ children, counts }: { children: ReactNode; counts: 
     { href: '/admin/customers', label: 'Клиенты' },
     { href: '/admin/chats', label: 'Чаты', count: counts.chats, countTitle: 'Ждут ответа студии' },
     { href: '/admin/catalog', label: 'Каталог WhatsApp' },
+    { href: '/admin/usage', label: 'Расходы ИИ' },
     { href: '/admin/settings', label: 'Настройки' },
   ];
   return (

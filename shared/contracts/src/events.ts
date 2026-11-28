@@ -22,7 +22,23 @@ const SubmittedMaterials = z.object({
   contributions: z.array(Contribution),
 });
 
+/** One call to a language model: tokens and the estimated cost (the studio's AI spend in /admin). */
+export const LlmUsage = z.object({
+  /** Service and what the call was for: ai/draft, ai/revision, sales/reply… */
+  service: z.string(),
+  purpose: z.string(),
+  model: z.string(),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  cacheReadTokens: z.number().int().nonnegative(),
+  cacheWriteTokens: z.number().int().nonnegative(),
+  projectId: z.string().nullable(),
+});
+export type LlmUsage = z.infer<typeof LlmUsage>;
+
 export const EventCatalog = {
+  /** The ai service called a model (drafts, revisions). Sales records its own calls directly. */
+  'ai.llm_used': LlmUsage,
   'projects.submitted': SubmittedMaterials,
   /** The customer asked for changes to a layout: ai rewrites the draft, layout typesets the next version. */
   'projects.revision_requested': SubmittedMaterials.extend({

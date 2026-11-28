@@ -104,3 +104,25 @@ export const CatalogSyncResult = z.object({
   skipped: z.array(z.string()),
   status: CatalogStatus,
 });
+
+/** AI spend for the studio: Claude calls of every service, estimated with the public per-token prices. */
+export const UsageRow = z.object({
+  key: z.string(),
+  calls: z.number().int(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  cacheReadTokens: z.number().int(),
+  costUsd: z.number(),
+});
+export const UsageSummary = z.object({
+  days: z.number().int(),
+  total: UsageRow,
+  today: UsageRow,
+  byDay: z.array(UsageRow),
+  byPurpose: z.array(UsageRow),
+  byModel: z.array(UsageRow),
+  /** Biggest spenders: chats and orders. */
+  topConversations: z.array(UsageRow.extend({ label: z.string() })),
+  note: z.string(),
+});
+export type UsageSummary = z.infer<typeof UsageSummary>;

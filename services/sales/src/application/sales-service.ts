@@ -26,6 +26,7 @@ import {
 import { followUpDue } from '../domain/follow-ups';
 import { stripForeignLinks, type Links } from '../domain/links';
 import { statusMessage } from '../domain/notifications';
+import { orderBrief } from '../domain/order-brief';
 import { allowedAmounts, asksSomething, checkReply, splitReply } from '../domain/reply-check';
 import type { CatalogService } from './catalog-service';
 import {
@@ -248,6 +249,15 @@ export class SalesService {
       orders: async () => {
         const linked = await repository.projects(c.id);
         return Promise.all(linked.map(async (link) => ({ project: await projects.get(link.editKey), link })));
+      },
+      orderBriefs: async () => {
+        const linked = await repository.projects(c.id);
+        return Promise.all(
+          linked.map(async (link) => {
+            const [p, product] = await Promise.all([projects.get(link.editKey), catalog.product(link.productId)]);
+            return orderBrief(p, product, { workspaceUrl: links.workspace(link.productId, link.editKey), inviteUrl: links.invite(link.productId, link.inviteKey) });
+          }),
+        );
       },
       createOrder: async (input) => {
         const phone = c.phone ?? phoneFromChatId(c.chatId);
@@ -475,6 +485,7 @@ export class SalesService {
     const tools: SellerTools = {
       products: () => catalog.products(),
       orders: async () => [],
+      orderBriefs: async () => [],
       createOrder: async (input) => {
         actions.push(`Оформил бы заказ: ${input.productId}/${input.formatId} про «${input.subject}» на имя ${input.customerName}`);
         throw AppError.conflict('Пробный режим: заказ не создаётся. Скажи клиенту, что заказ оформлен бы был, и продолжи.');
@@ -497,7 +508,7 @@ export class SalesService {
         actions.push(`Передал бы чат студии: ${HANDOFF_REASONS[code]} — ${summaryText}`);
       },
     };
-    const result = await agent.reply({ conversation, history, tools, now, mode: 'reply', check: await this.checker(conversation) });
+    const result = await agent.reply({ conversation, history, tools, now, mode: 'reply', purpose: 'trial', check: await this.checker(conversation) });
     return { reply: result.text ? toWhatsApp(stripForeignLinks(result.text, this.deps.links.allowedOrigins())) : null, actions };
   }
 

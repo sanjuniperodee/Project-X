@@ -1,12 +1,13 @@
 import { CatalogPhotosRequest, ProductId, SellerTrialRequest, SetConversationModeRequest, StudioReplyRequest, z } from '@px/contracts';
 import { AppError, parseInput, type FastifyInstance } from '@px/service-kit';
 import type { CatalogService } from '../application/catalog-service';
+import type { UsageStore } from '../infrastructure/usage-store';
 import type { SalesService } from '../application/sales-service';
 import { parseGowaWebhook, verifyGowaSignature } from '../infrastructure/gowa';
 
 const IdParams = z.object({ id: z.uuid() });
 
-export function registerRoutes(app: FastifyInstance, sales: SalesService, catalog: CatalogService, options: { webhookSecret: string }) {
+export function registerRoutes(app: FastifyInstance, sales: SalesService, catalog: CatalogService, usage: UsageStore, options: { webhookSecret: string }) {
   // Studio back office (the gateway requires the admin token for /api/admin/*).
   app.get('/admin/whatsapp', async () => sales.whatsappStatus());
   app.post('/admin/whatsapp/qr', async () => sales.whatsappQr());
@@ -27,6 +28,11 @@ export function registerRoutes(app: FastifyInstance, sales: SalesService, catalo
     return catalog.setPhotos(productId, parseInput(CatalogPhotosRequest, request.body).images);
   });
   app.post('/admin/catalog/sync', async () => catalog.sync());
+
+  app.get('/admin/usage', async (request) => {
+    const { days } = parseInput(z.object({ days: z.coerce.number().int().min(1).max(366).default(30) }), request.query);
+    return usage.summary(days);
+  });
 
   app.post('/admin/sales/trial', async (request) => sales.trial(parseInput(SellerTrialRequest, request.body).messages));
 

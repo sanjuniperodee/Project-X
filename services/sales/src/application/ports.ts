@@ -91,6 +91,8 @@ export type HandoffReason = keyof typeof HANDOFF_REASONS;
 export interface SellerTools {
   products(): Promise<Product[]>;
   orders(): Promise<{ project: ProjectView; link: LinkedProject }[]>;
+  /** Plain-words brief of every order of this customer: stage, next step on the site, what is filled and missing. */
+  orderBriefs(): Promise<string[]>;
   createOrder(input: {
     productId: ProductId;
     formatId: string;
@@ -121,6 +123,8 @@ export interface SellerAgent {
     now: Date;
     /** follow_up: the customer went silent after our message — write a gentle reminder or stay silent. */
     mode: 'reply' | 'follow_up';
+    /** For the AI spend summary; defaults to the mode. */
+    purpose?: 'reply' | 'follow_up' | 'trial';
     /** Problems in a finished text (amounts, details, links); extra amounts — sums the tools returned this turn. */
     check: (text: string, extraAmounts: number[]) => string[];
   }): Promise<SellerReply>;

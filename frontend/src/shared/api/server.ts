@@ -6,6 +6,7 @@ import {
   CustomerPage,
   PaymentList,
   CatalogStatus,
+  UsageSummary,
   CatalogSyncResult,
   ConversationList,
   ConversationView,
@@ -90,6 +91,7 @@ export const api = {
       sync: () =>
         call('/admin/catalog/sync', CatalogSyncResult, { method: 'POST', body: {}, headers: adminHeaders(), signal: AbortSignal.timeout(300_000) }),
     },
+    usage: (days = 30) => call(`/admin/usage?days=${days}`, UsageSummary, { headers: adminHeaders() }),
     sellerTrial: (messages: { author: 'customer' | 'bot'; text: string }[]) =>
       call('/admin/sales/trial', SellerTrialResponse, { method: 'POST', body: { messages }, headers: adminHeaders(), signal: AbortSignal.timeout(120_000) }),
     kaspi: {

@@ -28,9 +28,9 @@ const { service, sales } = await buildSalesApp({
   media: new HttpMediaReader(config.MEDIA_URL),
   catalog: new HttpCatalogGateway(config.CATALOG_URL),
   projects: new HttpProjectsGateway(config.PROJECTS_URL),
-  agent: (log) =>
+  agent: (log, onUsage) =>
     config.ANTHROPIC_API_KEY && config.BOT_ENABLED === 'true'
-      ? new ClaudeSeller({ apiKey: config.ANTHROPIC_API_KEY, model: config.SALES_MODEL, effort: config.SALES_EFFORT, log })
+      ? new ClaudeSeller({ apiKey: config.ANTHROPIC_API_KEY, model: config.SALES_MODEL, effort: config.SALES_EFFORT, log, onUsage })
       : null,
   frontendUrl: config.FRONTEND_URL,
   productUrls: config.PRODUCT_URLS,
