@@ -23,3 +23,4 @@ export * from './admin';
 export * from './interview';
 export * from './interview-script';
 export * from './voice';
+export * from './template-draft';

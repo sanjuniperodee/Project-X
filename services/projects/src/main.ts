@@ -3,6 +3,7 @@ import { buildProjectsApp } from './app';
 import { config } from './config';
 import { HttpCatalogGateway } from './infrastructure/catalog-client';
 import { createDatabase, runMigrations } from './infrastructure/db/client';
+import { HttpLayoutGateway } from './infrastructure/layout-client';
 import { HttpPaymentsGateway } from './infrastructure/payments-client';
 
 const database = createDatabase(config.DATABASE_URL);
@@ -13,6 +14,7 @@ const { service, relay } = await buildProjectsApp({
   connectBus: (log) => NatsEventBus.connect({ url: config.NATS_URL, name: 'projects', log }),
   catalog: new HttpCatalogGateway(config.CATALOG_URL),
   payments: new HttpPaymentsGateway(config.PAYMENTS_URL),
+  layout: new HttpLayoutGateway(config.LAYOUT_URL),
   frontendUrl: config.FRONTEND_URL,
   productUrls: config.PRODUCT_URLS,
   layoutRevisionLimit: config.LAYOUT_REVISION_LIMIT,

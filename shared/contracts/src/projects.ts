@@ -282,3 +282,10 @@ export const LayoutPreviewRequest = z.object({
   generator: z.string().default('preview'),
 });
 export type LayoutPreviewRequest = z.infer<typeof LayoutPreviewRequest>;
+
+/** projects → layout: page previews of the current answers (nothing stored as a layout, no events). */
+export const LayoutPreviewPagesRequest = z.object({
+  source: LayoutSource,
+  draft: DraftContent,
+});
+export type LayoutPreviewPagesRequest = z.infer<typeof LayoutPreviewPagesRequest>;

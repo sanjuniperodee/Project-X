@@ -126,6 +126,27 @@ export class LayoutService {
     }
   }
 
+  /**
+   * Page previews of the current answers for the customer before the submit: same templates, a draft made from
+   * the answers. Only SVG pages go to media (under random names); no PDF is kept, no layout version, no events.
+   */
+  async previewPages(product: Product, source: LayoutSource, draft: Draft): Promise<{ pages: LayoutPage[]; warnings: string[] }> {
+    const rendered = await this.render(product, source, draft);
+    try {
+      const base = `preview_${randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, 'x')}`;
+      const pages: LayoutPage[] = [];
+      for (const [index, page] of rendered.document.pages.entries()) {
+        const svg = this.deps.renderer.svg(page, { thumbnail: (key) => rendered.photos.thumbnailOf(key) });
+        const number = index + 1;
+        const previewUrl = await this.deps.media.put(`${base}_p${String(number).padStart(3, '0')}.svg`, Buffer.from(svg), 'image/svg+xml');
+        pages.push({ number, kind: page.kind, widthMm: toMm(page.size.w), heightMm: toMm(page.size.h), previewUrl });
+      }
+      return { pages, warnings: rendered.warnings };
+    } finally {
+      await rm(rendered.workdir, { recursive: true, force: true });
+    }
+  }
+
   private async publishFiles(rendered: RenderedLayout, source: LayoutSource): Promise<{ pdfUrl: string; pages: LayoutPage[] }> {
     // Random part: layout files are public by URL like photos, so names must not be guessable.
     const base = `layout_${randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, 'x')}_v${source.nextVersion}`;

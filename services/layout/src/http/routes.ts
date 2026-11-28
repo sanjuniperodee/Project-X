@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { rm } from 'node:fs/promises';
-import { LayoutPreviewRequest } from '@px/contracts';
+import { LayoutPreviewPagesRequest, LayoutPreviewRequest } from '@px/contracts';
 import { parseInput, type FastifyInstance } from '@px/service-kit';
 import type { LayoutService } from '../application/layout-service';
 import type { CatalogGateway } from '../application/ports';
@@ -11,6 +11,13 @@ export function registerRoutes(app: FastifyInstance, layouts: LayoutService, cat
   app.get('/internal/templates', async () => ({
     items: Object.entries(TEMPLATES).map(([productId, template]) => ({ productId, template: template.id })),
   }));
+
+  /** Page previews of a project's current answers (projects calls it for the customer's preview before the submit). */
+  app.post('/internal/preview-pages', async (request) => {
+    const body = parseInput(LayoutPreviewPagesRequest, request.body);
+    const product = await catalog.product(body.source.productId);
+    return layouts.previewPages(product, body.source, { ...body.draft, generator: 'preview', generatedAt: new Date().toISOString() });
+  });
 
   /** Renders a PDF from the given materials and streams it back; nothing is stored or published. */
   app.post('/internal/preview', async (request, reply) => {

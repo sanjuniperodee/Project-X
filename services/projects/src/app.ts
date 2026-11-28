@@ -1,9 +1,11 @@
 import type { ProductId } from '@px/contracts';
 import { AppError, createService, OutboxRelay, type EventBus, type Logger } from '@px/service-kit';
+import { PreviewService, type LayoutPreviewGateway } from './application/preview-service';
 import { ProjectService } from './application/project-service';
 import type { CatalogGateway, PaymentsGateway } from './application/ports';
 import { ProjectRuleViolation } from './domain/project';
 import { subscribeToEvents } from './events/subscriptions';
+import { registerPreviewRoutes } from './http/preview-routes';
 import { registerAdminRoutes, registerInternalRoutes, registerInviteRoutes, registerOwnerRoutes } from './http/routes';
 import type { Database } from './infrastructure/db/client';
 import { DrizzleBackOfficeQueries } from './infrastructure/back-office-queries';
@@ -15,6 +17,8 @@ export interface ProjectsAppDeps {
   connectBus: (log: Logger) => Promise<EventBus>;
   catalog: CatalogGateway;
   payments: PaymentsGateway;
+  /** Layout service for previews before the submit; absent — no preview route. */
+  layout?: LayoutPreviewGateway;
   frontendUrl: string;
   /** Automatic layout revision rounds before a designer takes over (default 3). */
   layoutRevisionLimit?: number;
@@ -52,6 +56,7 @@ export async function buildProjectsApp(deps: ProjectsAppDeps) {
   service.addReadinessCheck({ name: 'nats', check: () => bus.ping() });
 
   registerOwnerRoutes(service.app, projects);
+  if (deps.layout) registerPreviewRoutes(service.app, new PreviewService(projects, deps.catalog, deps.layout));
   registerInviteRoutes(service.app, projects);
   registerAdminRoutes(service.app, projects);
   registerInternalRoutes(service.app, projects);

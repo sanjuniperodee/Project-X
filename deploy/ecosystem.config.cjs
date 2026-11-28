@@ -85,6 +85,8 @@ module.exports = {
       DATABASE_URL: PG('px_projects'),
       PRODUCT_URLS: e.PRODUCT_URLS || '',
       LAYOUT_REVISION_LIMIT: e.LAYOUT_REVISION_LIMIT || '3',
+      // Previews before the submit are rendered by the layout service.
+      LAYOUT_URL: url('layout'),
     }),
     service('payments', {
       DATABASE_URL: PG('px_payments'),

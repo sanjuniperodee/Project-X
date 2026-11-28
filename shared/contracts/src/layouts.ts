@@ -87,3 +87,14 @@ export const RequestLayoutChangesRequest = z.object({
     .max(2000, 'Слишком длинный комментарий — сократите до 2000 символов'),
 });
 export type RequestLayoutChangesRequest = z.infer<typeof RequestLayoutChangesRequest>;
+
+/**
+ * Preview of the issue before the materials go to the editors: the same templates over the current answers,
+ * with a draft made from the answers (no model). Only page previews, no print PDF.
+ */
+export const ProjectPreview = z.object({
+  pages: z.array(LayoutPage),
+  warnings: z.array(z.string()),
+  generatedAt: z.iso.datetime(),
+});
+export type ProjectPreview = z.infer<typeof ProjectPreview>;

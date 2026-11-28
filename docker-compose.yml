@@ -50,6 +50,7 @@ services:
       <<: *service-env
       PORT: 4102
       DATABASE_URL: postgres://px:${POSTGRES_PASSWORD:-px}@postgres:5432/px_projects
+      LAYOUT_URL: http://layout:4107
       PRODUCT_URLS: ${PRODUCT_URLS:-}
     depends_on:
       postgres: { condition: service_healthy }

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  ProjectPreview,
   CheckoutResponse,
   CreateProjectResponse,
   PaymentView,
@@ -36,6 +37,9 @@ export const browserApi = {
 
   saveStep: (editKey: string, stepId: string, answers: StepAnswers) =>
     call(`/projects/${key(editKey)}/steps/${key(stepId)}`, ProjectView, { method: 'PUT', body: { answers } }),
+
+  /** The issue from the current answers (after the deposit, before the submit). Renders, so it may take a few seconds. */
+  preview: (editKey: string) => call(`/projects/${key(editKey)}/preview`, ProjectPreview, { method: 'POST' }),
 
   submit: (editKey: string) => call(`/projects/${key(editKey)}/submit`, ProjectView, { method: 'POST' }),
 

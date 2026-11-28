@@ -21,6 +21,7 @@ import { StepForm } from '../questionnaire/step-form';
 import { scopeErrors, type Errors } from '../questionnaire/values';
 import { Contributions } from './contributions';
 import { DraftPreview } from './draft-preview';
+import { IssuePreview } from './issue-preview';
 import { History } from './history';
 import { InvitePanel } from './invite-panel';
 import { LayoutReview } from './layout-review';
@@ -150,6 +151,8 @@ export function Workspace({
       <LayoutReview editKey={editKey} project={project} onChange={setProject} />
       {/* Before the first layout the draft shows what the texts will be; after it, the layout says it all. */}
       {project.draft && !project.layout && <DraftPreview draft={project.draft} cardsTitle={copy.draftCardsTitle} />}
+      {/* Until the submit: the issue from the customer's own answers (or how to unlock it before the deposit). */}
+      {editable && !project.layout && <IssuePreview editKey={editKey} project={project} />}
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <section aria-labelledby="questionnaire-title" className="min-w-0">
@@ -227,7 +230,9 @@ export function Workspace({
                 {completed.length === steps.length ? 'Всё готово к отправке' : `Заполнено ${completed.length} из ${steps.length}`}
               </h3>
               <p className="mt-2 max-w-[60ch] leading-relaxed text-muted">
-                {project.status === 'draft' ? 'Отправить материалы можно после предоплаты.' : copy.submitHint}
+                {project.status === 'draft'
+                  ? 'Отправить материалы можно после предоплаты — а сразу после неё здесь появится превью.'
+                  : `Сначала пролистайте превью выше и поправьте ответы, если нужно. ${copy.submitHint}`}
               </p>
               {submitMessage && (
                 <div className="mt-4">

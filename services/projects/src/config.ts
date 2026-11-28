@@ -28,6 +28,8 @@ export const config = loadConfig({
     ),
   MIGRATIONS_DIR: z.string().default('./drizzle'),
   /** Automatic layout revision rounds before the project goes to a designer in the studio. */
+  /** Layout service (private network): page previews before the submit. */
+  LAYOUT_URL: z.url().default('http://127.0.0.1:4107'),
   LAYOUT_REVISION_LIMIT: z.coerce.number().int().min(0).max(10).default(3),
 });
 export type ProjectsConfig = typeof config;
