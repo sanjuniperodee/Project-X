@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Voice studio: the questionnaire as a spoken conversation, and spoken change requests to a layout.
  *
- *   browser ──POST /api/voice/sessions──▶ voice service ──▶ ElevenLabs (conversation token)
+ *   browser ──POST /api/voice/sessions──▶ voice service ──▶ ElevenLabs (signed URL or token)
  *      │◀── provider + token + context ──┘
  *      └── realtime audio with the ElevenLabs agent; the agent's tool calls run in the browser
  *          and save answers through the same projects API the forms use.
@@ -29,7 +29,7 @@ export const VoiceSessionView = z.discriminatedUnion('provider', [
   z.object({ provider: z.literal('browser') }),
   z.object({
     provider: z.literal('elevenlabs'),
-    /** WebRTC session token (preferred) or a signed WebSocket URL: exactly one is set. */
+    /** A signed WebSocket URL or a WebRTC conversation token: exactly one is set. */
     conversationToken: z.string().optional(),
     signedUrl: z.string().optional(),
     /** Values for the `{{placeholders}}` of the agent's prompt and first message. */

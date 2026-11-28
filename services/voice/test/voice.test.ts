@@ -148,10 +148,11 @@ describe('agent definition', () => {
     }
   });
 
-  it('builds a private Russian agent that sends transcripts to the page', () => {
+  it('builds a private Russian agent with room for a long interview', () => {
     const config = agentConfig({ voiceId: 'voice-1', llm: 'claude-haiku-5-5', toolIds: ['t1'] });
     expect(config.conversation_config.agent).toMatchObject({ language: 'ru', first_message: '{{first_message}}', prompt: { llm: 'claude-haiku-5-5', tool_ids: ['t1'] } });
-    expect(config.conversation_config.conversation.client_events).toEqual(expect.arrayContaining(['user_transcript', 'agent_response', 'client_tool_call']));
+    expect(config.conversation_config.conversation.max_duration_seconds).toBe(1800);
+    expect(config.conversation_config.tts.voice_id).toBe('voice-1');
     expect(config.platform_settings.auth.enable_auth).toBe(true);
   });
 });

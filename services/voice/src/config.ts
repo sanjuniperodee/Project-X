@@ -13,8 +13,8 @@ export const config = loadConfig({
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_AGENT_ID: z.string().optional(),
   ELEVENLABS_API_URL: z.url().default('https://api.elevenlabs.io'),
-  /** `webrtc` (echo cancellation, best on phones) or `websocket` (works where WebRTC is blocked). */
-  VOICE_TRANSPORT: z.enum(['webrtc', 'websocket']).default('webrtc'),
+  /** `websocket` (signed URL; works behind strict networks) or `webrtc` (conversation token; lower latency). */
+  VOICE_TRANSPORT: z.enum(['websocket', 'webrtc']).default('websocket'),
 });
 
 if (config.VOICE_PROVIDER === 'elevenlabs' && !(config.ELEVENLABS_API_KEY && config.ELEVENLABS_AGENT_ID)) {

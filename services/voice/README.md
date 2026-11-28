@@ -8,8 +8,8 @@
 ```
 браузер ──POST /api/voice/sessions {editKey, mode}──▶ voice ──▶ projects (заказ), catalog (анкета)
    │                                                    └──▶ ElevenLabs: токен разговора
-   │◀── provider, conversationToken, dynamicVariables ──┘
-   └── WebRTC с агентом ElevenLabs: он слушает, думает и говорит;
+   │◀── provider, signedUrl | conversationToken, dynamicVariables ──┘
+   └── разговор с агентом ElevenLabs (WebSocket или WebRTC): он слушает, думает и говорит;
        его вызовы инструментов выполняются в браузере и сохраняют ответы через /api/projects
 ```
 
@@ -59,5 +59,6 @@ npm run dev      # PORT, PROJECTS_URL, CATALOG_URL из .env; VOICE_PROVIDER=bro
 npm test         # сессии с поддельными шлюзами, соответствие агента и контракта инструментов
 ```
 
-Ключ ElevenLabs живёт только на сервере: браузер получает одноразовый токен разговора. Агент приватный
+Транспорт — `VOICE_TRANSPORT`: `websocket` (по умолчанию, подписанный адрес разговора) или `webrtc` (токен разговора,
+меньше задержка). Ключ ElevenLabs живёт только на сервере: браузер получает одноразовый адрес или токен разговора. Агент приватный
 (`enable_auth`), разговор без токена не начать. Стоимость — минуты ElevenLabs Agents; интервью занимает 5–15 минут.

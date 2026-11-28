@@ -129,7 +129,7 @@ module.exports = {
       VOICE_PROVIDER: e.VOICE_PROVIDER || (e.ELEVENLABS_API_KEY && e.ELEVENLABS_AGENT_ID ? 'elevenlabs' : 'browser'),
       ELEVENLABS_API_KEY: e.ELEVENLABS_API_KEY || '',
       ELEVENLABS_AGENT_ID: e.ELEVENLABS_AGENT_ID || '',
-      VOICE_TRANSPORT: e.VOICE_TRANSPORT || 'webrtc',
+      VOICE_TRANSPORT: e.VOICE_TRANSPORT || 'websocket',
     }),
     service('sales', {
       DATABASE_URL: PG('px_sales'),

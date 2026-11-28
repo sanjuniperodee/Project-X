@@ -155,14 +155,10 @@ export function agentConfig(options: AgentOptions) {
           timezone: 'Asia/Almaty',
         },
       },
-      // Russian needs a multilingual model; flash keeps the reply under a second.
-      tts: { voice_id: options.voiceId, model_id: 'eleven_flash_v2_5' },
-      conversation: {
-        // A full interview with photos takes 10–20 minutes.
-        max_duration_seconds: 1800,
-        // Captions on the page need both sides' transcripts.
-        client_events: ['audio', 'interruption', 'user_transcript', 'agent_response', 'agent_response_correction', 'client_tool_call'],
-      },
+      // The platform's default speech model is kept: it is the current multilingual one.
+      tts: { voice_id: options.voiceId },
+      // A full interview with photos takes 10–20 minutes. Transcripts and tool calls reach the page by default.
+      conversation: { max_duration_seconds: 1800 },
     },
     // Private agent: conversations start only with a token this service issues.
     platform_settings: { auth: { enable_auth: true } },
