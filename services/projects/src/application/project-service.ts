@@ -46,6 +46,8 @@ import {
   deadlineFrom,
   saveStepAnswers,
   transition,
+  canReopen,
+  reopen,
   type Project,
   type StatusChange,
 } from '../domain/project';
@@ -97,6 +99,7 @@ export class ProjectService {
       paidAmount: 0,
       designMode: 'auto',
       revisionsUsed: 0,
+      reopened: false,
       deadline: null,
       createdAt: now,
       updatedAt: now,
@@ -154,6 +157,27 @@ export class ProjectService {
       return locked;
     });
     return this.toView(submitted);
+  }
+
+  /**
+   * The customer takes the questionnaire back once after the submit (before approving a layout): the pending layout
+   * is set aside, the status returns to "collecting materials", the next submit makes a new draft and layout.
+   */
+  async reopen(editKey: string): Promise<ProjectView> {
+    const reopened = await this.deps.repository.transaction(async (tx) => {
+      const locked = await this.lock(tx, { editKey });
+      const layout = await tx.latestLayout(locked.id);
+      const change = reopen(locked, layout?.status === 'approved');
+      if (layout?.status === 'pending') {
+        layout.status = 'discarded';
+        layout.decidedAt = new Date();
+        await tx.updateLayout(layout);
+      }
+      await tx.update(locked);
+      await this.recordChange(tx, locked, change);
+      return locked;
+    });
+    return this.toView(reopened);
   }
 
   async checkout(editKey: string, kind: PaymentKind) {
@@ -490,6 +514,7 @@ export class ProjectService {
       draft: project.draft,
       layout: layouts[0] ? toLayoutView(layouts[0]) : null,
       design: { mode: project.designMode, revisionsUsed: project.revisionsUsed, revisionsLimit: this.deps.revisionsLimit },
+      canReopen: canReopen(project, layouts.some((l) => l.status === 'approved')),
       inviteKey: project.inviteKey,
       paidAmount: project.paidAmount,
       history: history.map((h) => ({ from: h.from, to: h.to, note: h.note, createdAt: h.createdAt.toISOString() })),

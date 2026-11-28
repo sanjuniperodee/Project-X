@@ -35,6 +35,8 @@ export interface Project {
   designMode: DesignMode;
   /** Automatic revision rounds used. */
   revisionsUsed: number;
+  /** The customer took the questionnaire back after the submit (allowed once). */
+  reopened: boolean;
   /** Gift date from the questionnaire (ISO date): the production deadline. */
   deadline: string | null;
   createdAt: Date;
@@ -54,7 +56,8 @@ export type ProjectRuleCode =
   | 'nothing_to_pay'
   | 'not_accepting_contributions'
   | 'no_layout_to_decide'
-  | 'stale_layout';
+  | 'stale_layout'
+  | 'reopen_used';
 
 /** A business rule was violated by an otherwise well-formed request. */
 export class ProjectRuleViolation extends Error {
@@ -86,6 +89,23 @@ export function manualTransition(project: Project, to: ProjectStatus, note: stri
     throw new ProjectRuleViolation('invalid_transition', 'Этот статус выставляется автоматически после оплаты');
   }
   return transition(project, to, note);
+}
+
+/** Whether the customer may still take the questionnaire back (once, before the layout is approved). */
+export function canReopen(project: Pick<Project, 'status' | 'reopened'>, layoutApproved: boolean): boolean {
+  return !project.reopened && !layoutApproved && (project.status === 'in_design' || project.status === 'awaiting_approval');
+}
+
+/** The questionnaire opens again: the next submit starts a new draft and layout. */
+export function reopen(project: Project, layoutApproved: boolean): StatusChange {
+  if (project.reopened) throw new ProjectRuleViolation('reopen_used', 'Анкету можно вернуть на доработку только один раз');
+  if (!canReopen(project, layoutApproved)) {
+    throw new ProjectRuleViolation('invalid_transition', 'Сейчас анкету уже не вернуть — опишите правки к макету');
+  }
+  const change = transition(project, 'deposit_paid', 'Клиент вернул анкету на доработку');
+  project.reopened = true;
+  project.draft = null;
+  return change;
 }
 
 export function assertEditable(project: Project): void {

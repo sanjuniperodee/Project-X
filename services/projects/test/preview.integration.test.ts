@@ -127,4 +127,15 @@ it('shows the issue from the current answers between the deposit and the submit'
   await http('POST', `/projects/${editKey}/submit`);
   const late = await http('POST', `/projects/${editKey}/preview`);
   expect(late.statusCode).toBe(409);
+
+  // Once after the submit the customer may take the questionnaire back.
+  expect((await http('GET', `/projects/${editKey}`)).json()).toMatchObject({ status: 'in_design', canReopen: true });
+  const back = await http('POST', `/projects/${editKey}/reopen`);
+  expect(back.statusCode).toBe(200);
+  expect(back.json()).toMatchObject({ status: 'deposit_paid', canReopen: false, draft: null });
+  expect((await http('PUT', `/projects/${editKey}/steps/hero`, { answers: { name: 'Айгерим С.' } })).statusCode).toBe(200);
+  expect((await http('POST', `/projects/${editKey}/submit`)).json().status).toBe('in_design');
+  const again = await http('POST', `/projects/${editKey}/reopen`);
+  expect(again.statusCode).toBe(409);
+  expect(again.json().error.message).toMatch(/только один раз/);
 });

@@ -81,6 +81,17 @@ export function IssuePreview({ editKey, project }: { editKey: string; project: P
         </div>
       )}
       {loading && !preview && <p className="mt-6 text-muted">Собираем страницы из ваших ответов… обычно это несколько секунд.</p>}
+      {preview && preview.warnings.length > 0 && (
+        <div className="mt-5">
+          <Notice title={`Чтобы ${noun === 'игры' ? 'игра получилась' : noun === 'книги' ? 'книга получилась' : 'номер получился'} насыщеннее`}>
+            <ul className="list-disc space-y-1 pl-5">
+              {preview.warnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </Notice>
+        </div>
+      )}
       {preview && (
         <div className="mt-6">
           <LayoutPages pages={preview.pages} spreads={READ_AS_SPREADS[project.productId]} />

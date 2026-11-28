@@ -44,6 +44,11 @@ export function registerOwnerRoutes(app: FastifyInstance, projects: ProjectServi
     return projects.submit(editKey);
   });
 
+  app.post('/projects/:editKey/reopen', async (request) => {
+    const { editKey } = parseInput(EditKeyParams, request.params);
+    return projects.reopen(editKey);
+  });
+
   app.post('/projects/:editKey/layout/approve', async (request) => {
     const { editKey } = parseInput(EditKeyParams, request.params);
     const { version } = parseInput(ApproveLayoutRequest, request.body);

@@ -22,6 +22,13 @@
       "when": 1795821638776,
       "tag": "0002_crm",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795830788316,
+      "tag": "0003_reopen",
+      "breakpoints": true
     }
   ]
 }

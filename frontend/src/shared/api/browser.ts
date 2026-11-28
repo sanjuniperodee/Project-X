@@ -41,6 +41,9 @@ export const browserApi = {
   /** The issue from the current answers (after the deposit, before the submit). Renders, so it may take a few seconds. */
   preview: (editKey: string) => call(`/projects/${key(editKey)}/preview`, ProjectPreview, { method: 'POST' }),
 
+  /** Takes the questionnaire back once after the submit (until a layout is approved). */
+  reopen: (editKey: string) => call(`/projects/${key(editKey)}/reopen`, ProjectView, { method: 'POST' }),
+
   submit: (editKey: string) => call(`/projects/${key(editKey)}/submit`, ProjectView, { method: 'POST' }),
 
   approveLayout: (editKey: string, version: number) =>

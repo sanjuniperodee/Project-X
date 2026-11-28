@@ -32,8 +32,9 @@ export type ProjectStatus = z.infer<typeof ProjectStatus>;
 export const PROJECT_TRANSITIONS: Readonly<Record<ProjectStatus, readonly ProjectStatus[]>> = {
   draft: ['deposit_paid', 'cancelled'],
   deposit_paid: ['in_design', 'cancelled'],
-  in_design: ['awaiting_approval', 'cancelled'],
-  awaiting_approval: ['in_design', 'paid', 'cancelled'],
+  // → deposit_paid: the customer takes the questionnaire back once (see ProjectView.canReopen).
+  in_design: ['awaiting_approval', 'deposit_paid', 'cancelled'],
+  awaiting_approval: ['in_design', 'deposit_paid', 'paid', 'cancelled'],
   paid: ['printing'],
   printing: ['shipped'],
   shipped: ['delivered'],
@@ -173,6 +174,8 @@ export const ProjectView = z.object({
   /** Latest layout version, if one was made. */
   layout: LayoutView.nullable(),
   design: DesignState,
+  /** The customer may take the questionnaire back once after the submit, until the layout is approved. */
+  canReopen: z.boolean().default(false),
   inviteKey: z.string(),
   paidAmount: z.number().int().nonnegative(),
   history: z.array(StatusChange),

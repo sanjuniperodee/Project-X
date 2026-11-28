@@ -383,7 +383,7 @@ export class SalesService {
       inviteUrl: links.invite(project.productId, project.inviteKey),
       balance: Math.max(0, project.quote.total - project.paidAmount),
       productionDays: product.productionDays,
-    });
+    }, event.data.from);
     if (!text) return;
 
     // Orders from the site reach the customer too: the chat is found (or opened) by the order's phone.
@@ -397,7 +397,7 @@ export class SalesService {
     }
     await this.send(conversation, 'system', text);
     await repository.update(conversation);
-    if (to.data === 'deposit_paid' || to.data === 'paid') {
+    if ((to.data === 'deposit_paid' && event.data.from === 'draft') || to.data === 'paid') {
       await this.alertStudio(`💰 ${to.data === 'paid' ? 'Оплачен остаток' : 'Предоплата'}: «${product.name}» — ${project.subject}, ${project.customer.name}`);
     }
   }

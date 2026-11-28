@@ -15,15 +15,18 @@ export interface NotificationContext {
  * WhatsApp message to the customer when the order moves on. null: nothing worth a message
  * (statuses the customer caused themselves seconds ago are still confirmed: people like a receipt).
  */
-export function statusMessage(to: ProjectStatus, c: NotificationContext): string | null {
+export function statusMessage(to: ProjectStatus, c: NotificationContext, from: string | null = null): string | null {
   const hi = `${c.customerName.split(' ')[0] || 'Здравствуйте'}, `;
   switch (to) {
     case 'deposit_paid':
+      if (from === 'in_design' || from === 'awaiting_approval') {
+        return `${hi}анкета снова открыта — меняйте ответы и фото здесь: ${c.workspaceUrl}\nКогда будет готово, отправьте её ещё раз: соберём новый макет. Вернуть анкету можно было один раз, так что в этот раз проверьте превью перед отправкой.`;
+      }
       return (
         `${hi}предоплата за «${c.productName}» про ${c.subject} получена, спасибо!\n\n` +
         `Дальше анкета и истории друзей — заполняйте здесь: ${c.workspaceUrl}\n` +
         `Ссылка для друзей и родных (пусть добавят свои истории и фото): ${c.inviteUrl}\n\n` +
-        'Когда материалы будут готовы, нажмите «Отправить дизайнеру».'
+        'В кабинете сразу видно превью страниц из ваших ответов. Когда всё готово — кнопка отправки внизу анкеты.'
       );
     case 'in_design':
       return `${hi}материалы получили — начинаем делать макет «${c.productName}». Напишем, как только он будет готов.`;

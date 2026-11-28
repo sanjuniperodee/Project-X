@@ -25,7 +25,7 @@ export function PaymentPanel({ editKey, project, confirming }: { editKey: string
   }
 
   return (
-    <section className="rounded-card border border-line bg-surface p-5" aria-labelledby="payment-title">
+    <section id="payment" className="scroll-mt-6 rounded-card border border-line bg-surface p-5" aria-labelledby="payment-title">
       <h2 id="payment-title" className="font-display text-xl font-semibold">
         Оплата
       </h2>
@@ -40,7 +40,7 @@ export function PaymentPanel({ editKey, project, confirming }: { editKey: string
           <Notice title="Подтверждаем оплату…">Обычно это занимает несколько секунд. Страница обновится сама.</Notice>
         ) : status === 'draft' ? (
           <>
-            <Button size="lg" className="w-full" loading={pending === 'deposit'} onClick={() => void pay('deposit')}>
+            <Button id="pay-deposit" size="lg" className="w-full" loading={pending === 'deposit'} onClick={() => void pay('deposit')}>
               Оплатить предоплату {formatTenge(quote.deposit)}
             </Button>
             <p className="mt-2.5 text-sm leading-relaxed text-muted">
@@ -57,7 +57,7 @@ export function PaymentPanel({ editKey, project, confirming }: { editKey: string
           </p>
         ) : status === 'awaiting_approval' && project.layout?.status === 'approved' ? (
           <>
-            <Button size="lg" className="w-full" loading={pending === 'balance'} onClick={() => void pay('balance')}>
+            <Button id="pay-balance" size="lg" className="w-full" loading={pending === 'balance'} onClick={() => void pay('balance')}>
               Оплатить остаток {formatTenge(quote.total - project.paidAmount)}
             </Button>
             <p className="mt-2.5 text-sm leading-relaxed text-muted">Макет согласован. После оплаты отправим заказ в печать.</p>

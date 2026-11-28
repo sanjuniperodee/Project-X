@@ -1,6 +1,6 @@
 import type { Answers, Customer, DesignMode, Draft, EventEnvelope, LayoutPage, LayoutStatus, ProductId, ProjectStatus, Quote } from '@px/contracts';
 import { sql } from 'drizzle-orm';
-import { date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -22,6 +22,8 @@ export const projects = pgTable(
     paidAmount: integer('paid_amount').notNull().default(0),
     designMode: text('design_mode').$type<DesignMode>().notNull().default('auto'),
     revisionsUsed: integer('revisions_used').notNull().default(0),
+    /** The customer took the questionnaire back after the submit (allowed once). */
+    reopened: boolean('reopened').notNull().default(false),
     deadline: date('deadline', { mode: 'string' }),
     ...timestamps,
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

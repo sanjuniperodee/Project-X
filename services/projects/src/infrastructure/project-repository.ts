@@ -25,6 +25,7 @@ function toProject(row: ProjectRow): Project {
     paidAmount: row.paidAmount,
     designMode: row.designMode,
     revisionsUsed: row.revisionsUsed,
+    reopened: row.reopened,
     deadline: row.deadline ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
